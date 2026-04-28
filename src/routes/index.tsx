@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, ShoppingCart, Sparkles, LogIn } from "lucide-react";
+import { Search, ShoppingCart, Sparkles, LogIn, Package } from "lucide-react";
 import { brl, WHATSAPP_NUMBER, STORE_NAME } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -225,8 +225,3 @@ function VitrinePage() {
   );
 }
 
-function Package({ className }: { className?: string }) {
-  // import Package as a fallback icon — re-exported lazily to avoid cluttering imports
-  const { Package: P } = require("lucide-react");
-  return <P className={className} />;
-}
