@@ -304,7 +304,7 @@ function CadernetaPage() {
       />
 
       {/* Resumo */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <Card>
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground">Total devedor</div>
@@ -319,6 +319,19 @@ function CadernetaPage() {
             <div className="text-2xl font-bold">{qtdDevedores}</div>
           </CardContent>
         </Card>
+        <Card className={qtdAltoRisco > 0 ? "border-destructive/50 bg-destructive/5" : ""}>
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
+              <ShieldAlert className="h-3 w-3" /> Alto risco
+            </div>
+            <div className={`text-2xl font-bold ${qtdAltoRisco > 0 ? "text-destructive" : ""}`}>
+              {qtdAltoRisco}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              ≥ 80% do limite
+            </div>
+          </CardContent>
+        </Card>
         <Card className="hidden md:block">
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground">Clientes cadastrados</div>
@@ -326,6 +339,16 @@ function CadernetaPage() {
           </CardContent>
         </Card>
       </div>
+
+      {qtdAltoRisco > 0 && (
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            <strong>{qtdAltoRisco}</strong> {qtdAltoRisco === 1 ? "cliente está" : "clientes estão"} próximos ou acima do limite da caderneta.
+            Revise antes de liberar novas vendas a prazo.
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-6">
         {/* Lista de clientes */}
