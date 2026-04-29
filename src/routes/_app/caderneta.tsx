@@ -379,34 +379,78 @@ function CadernetaPage() {
               )}
               {filtrados.map((c) => {
                 const saldo = Number(c.saldo_devedor);
+                const limite = Number(c.limite_caderneta);
                 const ativo = selecionado?.id === c.id;
+                const risco = c.risco;
+                const styles = RISCO_STYLES[risco.nivel];
+                const pctClamp = Math.min(100, Math.max(0, risco.pct));
                 return (
                   <button
                     key={c.id}
                     onClick={() => abrirCliente(c)}
                     className={[
-                      "w-full text-left px-4 py-3 flex items-center justify-between gap-3 transition-smooth",
+                      "w-full text-left px-4 py-3 flex items-center justify-between gap-3 transition-smooth relative",
                       ativo ? "bg-accent" : "hover:bg-muted/50",
+                      risco.nivel === "estourado" ? "bg-destructive/5" : "",
                     ].join(" ")}
                   >
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{c.nome}</div>
+                    <span
+                      aria-hidden
+                      className={[
+                        "absolute left-0 top-0 bottom-0 w-1",
+                        risco.nivel === "ok" ? "bg-transparent" : styles.bar,
+                      ].join(" ")}
+                    />
+                    <div className="min-w-0 pl-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{c.nome}</span>
+                        {(risco.nivel === "alto" || risco.nivel === "estourado") && (
+                          <Badge
+                            variant={risco.nivel === "estourado" ? "destructive" : "outline"}
+                            className={[
+                              "text-[10px] px-1.5 py-0 h-5 gap-1",
+                              risco.nivel === "alto" ? "border-orange-400 text-orange-600" : "",
+                            ].join(" ")}
+                          >
+                            <AlertTriangle className="h-3 w-3" />
+                            {styles.label}
+                          </Badge>
+                        )}
+                        {risco.nivel === "atencao" && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-amber-400 text-amber-600">
+                            {styles.label}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {c.telefone || "Sem telefone"}
                       </div>
+                      {limite > 0 && saldo > 0 && (
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <div className="h-1.5 flex-1 max-w-[140px] rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={`h-full ${styles.bar} transition-all`}
+                              style={{ width: `${pctClamp}%` }}
+                            />
+                          </div>
+                          <span className={`text-[10px] font-medium ${styles.text}`}>
+                            {Math.round(risco.pct)}%
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <div
                         className={[
                           "font-semibold",
-                          saldo > 0 ? "text-destructive" : "text-muted-foreground",
+                          saldo > 0 ? styles.text : "text-muted-foreground",
                         ].join(" ")}
                       >
                         {brl(saldo)}
                       </div>
-                      {Number(c.limite_caderneta) > 0 && (
+                      {limite > 0 && (
                         <div className="text-[10px] text-muted-foreground">
-                          limite {brl(c.limite_caderneta)}
+                          limite {brl(limite)}
                         </div>
                       )}
                     </div>
