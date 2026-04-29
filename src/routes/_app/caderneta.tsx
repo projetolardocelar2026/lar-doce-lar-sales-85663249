@@ -21,7 +21,33 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Search, Plus, HandCoins, History, AlertCircle } from "lucide-react";
+import { Search, Plus, HandCoins, History, AlertCircle, AlertTriangle, ShieldAlert } from "lucide-react";
+
+type RiscoNivel = "ok" | "atencao" | "alto" | "estourado";
+
+function calcularRisco(saldo: number, limite: number): { nivel: RiscoNivel; pct: number } {
+  const s = Number(saldo) || 0;
+  const l = Number(limite) || 0;
+  if (s <= 0) return { nivel: "ok", pct: 0 };
+  if (l <= 0) {
+    // sem limite definido: alerta apenas por valor absoluto
+    if (s >= 500) return { nivel: "alto", pct: 100 };
+    if (s >= 200) return { nivel: "atencao", pct: 60 };
+    return { nivel: "ok", pct: 0 };
+  }
+  const pct = (s / l) * 100;
+  if (pct >= 100) return { nivel: "estourado", pct };
+  if (pct >= 80) return { nivel: "alto", pct };
+  if (pct >= 50) return { nivel: "atencao", pct };
+  return { nivel: "ok", pct };
+}
+
+const RISCO_STYLES: Record<RiscoNivel, { bar: string; text: string; ring: string; label: string }> = {
+  ok: { bar: "bg-emerald-500", text: "text-emerald-600", ring: "", label: "Em dia" },
+  atencao: { bar: "bg-amber-500", text: "text-amber-600", ring: "", label: "Atenção" },
+  alto: { bar: "bg-orange-500", text: "text-orange-600", ring: "ring-1 ring-orange-300", label: "Risco alto" },
+  estourado: { bar: "bg-destructive", text: "text-destructive", ring: "ring-2 ring-destructive/60", label: "Limite estourado" },
+};
 
 export const Route = createFileRoute("/_app/caderneta")({
   component: CadernetaPage,
