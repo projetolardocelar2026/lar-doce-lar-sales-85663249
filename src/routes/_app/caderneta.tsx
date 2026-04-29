@@ -21,7 +21,33 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Search, Plus, HandCoins, History, AlertCircle } from "lucide-react";
+import { Search, Plus, HandCoins, History, AlertCircle, AlertTriangle, ShieldAlert } from "lucide-react";
+
+type RiscoNivel = "ok" | "atencao" | "alto" | "estourado";
+
+function calcularRisco(saldo: number, limite: number): { nivel: RiscoNivel; pct: number } {
+  const s = Number(saldo) || 0;
+  const l = Number(limite) || 0;
+  if (s <= 0) return { nivel: "ok", pct: 0 };
+  if (l <= 0) {
+    // sem limite definido: alerta apenas por valor absoluto
+    if (s >= 500) return { nivel: "alto", pct: 100 };
+    if (s >= 200) return { nivel: "atencao", pct: 60 };
+    return { nivel: "ok", pct: 0 };
+  }
+  const pct = (s / l) * 100;
+  if (pct >= 100) return { nivel: "estourado", pct };
+  if (pct >= 80) return { nivel: "alto", pct };
+  if (pct >= 50) return { nivel: "atencao", pct };
+  return { nivel: "ok", pct };
+}
+
+const RISCO_STYLES: Record<RiscoNivel, { bar: string; text: string; ring: string; label: string }> = {
+  ok: { bar: "bg-emerald-500", text: "text-emerald-600", ring: "", label: "Em dia" },
+  atencao: { bar: "bg-amber-500", text: "text-amber-600", ring: "", label: "Atenção" },
+  alto: { bar: "bg-orange-500", text: "text-orange-600", ring: "ring-1 ring-orange-300", label: "Risco alto" },
+  estourado: { bar: "bg-destructive", text: "text-destructive", ring: "ring-2 ring-destructive/60", label: "Limite estourado" },
+};
 
 export const Route = createFileRoute("/_app/caderneta")({
   component: CadernetaPage,
@@ -127,13 +153,26 @@ function CadernetaPage() {
     await carregarHistorico(c.id);
   };
 
+  const clientesComRisco = useMemo(
+    () => clientes.map((c) => ({ ...c, risco: calcularRisco(Number(c.saldo_devedor), Number(c.limite_caderneta)) })),
+    [clientes],
+  );
+
+  const ordemRisco: Record<RiscoNivel, number> = { estourado: 0, alto: 1, atencao: 2, ok: 3 };
+
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    if (!q) return clientes;
-    return clientes.filter(
-      (c) => c.nome.toLowerCase().includes(q) || (c.telefone ?? "").includes(q),
-    );
-  }, [busca, clientes]);
+    const base = !q
+      ? clientesComRisco
+      : clientesComRisco.filter(
+          (c) => c.nome.toLowerCase().includes(q) || (c.telefone ?? "").includes(q),
+        );
+    return [...base].sort((a, b) => {
+      const r = ordemRisco[a.risco.nivel] - ordemRisco[b.risco.nivel];
+      if (r !== 0) return r;
+      return Number(b.saldo_devedor) - Number(a.saldo_devedor);
+    });
+  }, [busca, clientesComRisco]);
 
   const totalDevedor = useMemo(
     () => clientes.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
@@ -142,6 +181,10 @@ function CadernetaPage() {
   const qtdDevedores = useMemo(
     () => clientes.filter((c) => Number(c.saldo_devedor) > 0).length,
     [clientes],
+  );
+  const qtdAltoRisco = useMemo(
+    () => clientesComRisco.filter((c) => c.risco.nivel === "alto" || c.risco.nivel === "estourado").length,
+    [clientesComRisco],
   );
 
   // ============ PAGAMENTO ============
@@ -261,7 +304,7 @@ function CadernetaPage() {
       />
 
       {/* Resumo */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <Card>
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground">Total devedor</div>
@@ -276,6 +319,19 @@ function CadernetaPage() {
             <div className="text-2xl font-bold">{qtdDevedores}</div>
           </CardContent>
         </Card>
+        <Card className={qtdAltoRisco > 0 ? "border-destructive/50 bg-destructive/5" : ""}>
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
+              <ShieldAlert className="h-3 w-3" /> Alto risco
+            </div>
+            <div className={`text-2xl font-bold ${qtdAltoRisco > 0 ? "text-destructive" : ""}`}>
+              {qtdAltoRisco}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              ≥ 80% do limite
+            </div>
+          </CardContent>
+        </Card>
         <Card className="hidden md:block">
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground">Clientes cadastrados</div>
@@ -283,6 +339,16 @@ function CadernetaPage() {
           </CardContent>
         </Card>
       </div>
+
+      {qtdAltoRisco > 0 && (
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            <strong>{qtdAltoRisco}</strong> {qtdAltoRisco === 1 ? "cliente está" : "clientes estão"} próximos ou acima do limite da caderneta.
+            Revise antes de liberar novas vendas a prazo.
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-6">
         {/* Lista de clientes */}
@@ -313,34 +379,78 @@ function CadernetaPage() {
               )}
               {filtrados.map((c) => {
                 const saldo = Number(c.saldo_devedor);
+                const limite = Number(c.limite_caderneta);
                 const ativo = selecionado?.id === c.id;
+                const risco = c.risco;
+                const styles = RISCO_STYLES[risco.nivel];
+                const pctClamp = Math.min(100, Math.max(0, risco.pct));
                 return (
                   <button
                     key={c.id}
                     onClick={() => abrirCliente(c)}
                     className={[
-                      "w-full text-left px-4 py-3 flex items-center justify-between gap-3 transition-smooth",
+                      "w-full text-left px-4 py-3 flex items-center justify-between gap-3 transition-smooth relative",
                       ativo ? "bg-accent" : "hover:bg-muted/50",
+                      risco.nivel === "estourado" ? "bg-destructive/5" : "",
                     ].join(" ")}
                   >
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{c.nome}</div>
+                    <span
+                      aria-hidden
+                      className={[
+                        "absolute left-0 top-0 bottom-0 w-1",
+                        risco.nivel === "ok" ? "bg-transparent" : styles.bar,
+                      ].join(" ")}
+                    />
+                    <div className="min-w-0 pl-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{c.nome}</span>
+                        {(risco.nivel === "alto" || risco.nivel === "estourado") && (
+                          <Badge
+                            variant={risco.nivel === "estourado" ? "destructive" : "outline"}
+                            className={[
+                              "text-[10px] px-1.5 py-0 h-5 gap-1",
+                              risco.nivel === "alto" ? "border-orange-400 text-orange-600" : "",
+                            ].join(" ")}
+                          >
+                            <AlertTriangle className="h-3 w-3" />
+                            {styles.label}
+                          </Badge>
+                        )}
+                        {risco.nivel === "atencao" && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-amber-400 text-amber-600">
+                            {styles.label}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {c.telefone || "Sem telefone"}
                       </div>
+                      {limite > 0 && saldo > 0 && (
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <div className="h-1.5 flex-1 max-w-[140px] rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={`h-full ${styles.bar} transition-all`}
+                              style={{ width: `${pctClamp}%` }}
+                            />
+                          </div>
+                          <span className={`text-[10px] font-medium ${styles.text}`}>
+                            {Math.round(risco.pct)}%
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <div
                         className={[
                           "font-semibold",
-                          saldo > 0 ? "text-destructive" : "text-muted-foreground",
+                          saldo > 0 ? styles.text : "text-muted-foreground",
                         ].join(" ")}
                       >
                         {brl(saldo)}
                       </div>
-                      {Number(c.limite_caderneta) > 0 && (
+                      {limite > 0 && (
                         <div className="text-[10px] text-muted-foreground">
-                          limite {brl(c.limite_caderneta)}
+                          limite {brl(limite)}
                         </div>
                       )}
                     </div>
