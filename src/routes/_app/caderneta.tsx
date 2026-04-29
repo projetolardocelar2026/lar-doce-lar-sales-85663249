@@ -153,13 +153,26 @@ function CadernetaPage() {
     await carregarHistorico(c.id);
   };
 
+  const clientesComRisco = useMemo(
+    () => clientes.map((c) => ({ ...c, risco: calcularRisco(Number(c.saldo_devedor), Number(c.limite_caderneta)) })),
+    [clientes],
+  );
+
+  const ordemRisco: Record<RiscoNivel, number> = { estourado: 0, alto: 1, atencao: 2, ok: 3 };
+
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    if (!q) return clientes;
-    return clientes.filter(
-      (c) => c.nome.toLowerCase().includes(q) || (c.telefone ?? "").includes(q),
-    );
-  }, [busca, clientes]);
+    const base = !q
+      ? clientesComRisco
+      : clientesComRisco.filter(
+          (c) => c.nome.toLowerCase().includes(q) || (c.telefone ?? "").includes(q),
+        );
+    return [...base].sort((a, b) => {
+      const r = ordemRisco[a.risco.nivel] - ordemRisco[b.risco.nivel];
+      if (r !== 0) return r;
+      return Number(b.saldo_devedor) - Number(a.saldo_devedor);
+    });
+  }, [busca, clientesComRisco]);
 
   const totalDevedor = useMemo(
     () => clientes.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
@@ -168,6 +181,10 @@ function CadernetaPage() {
   const qtdDevedores = useMemo(
     () => clientes.filter((c) => Number(c.saldo_devedor) > 0).length,
     [clientes],
+  );
+  const qtdAltoRisco = useMemo(
+    () => clientesComRisco.filter((c) => c.risco.nivel === "alto" || c.risco.nivel === "estourado").length,
+    [clientesComRisco],
   );
 
   // ============ PAGAMENTO ============
