@@ -18,8 +18,8 @@ import {
 import { brl, formaPagamentoLabel } from "@/lib/format";
 import { toast } from "sonner";
 import {
-  Search, Plus, Minus, Trash2, ShoppingCart, X, Check, User,
-  Banknote, CreditCard, Smartphone, Notebook,
+  Search, Plus, Minus, Trash2, ShoppingCart, X, Check, User, UserPlus,
+  Banknote, CreditCard, Smartphone, Notebook, Clock,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/pdv")({
@@ -56,7 +56,7 @@ const FORMAS: { value: Forma; label: string; icon: typeof Banknote }[] = [
 ];
 
 function PDVPage() {
-  const { user } = useAuth();
+  const { user, nomeCompleto, role } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -71,6 +71,10 @@ function PDVPage() {
   const [saving, setSaving] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showCart, setShowCart] = useState(false);
+  const [showNovoCliente, setShowNovoCliente] = useState(false);
+  const [novoCli, setNovoCli] = useState({ nome: "", telefone: "", documento: "", limite_caderneta: "" });
+  const [savingCli, setSavingCli] = useState(false);
+  const [aberturaCaixa] = useState<Date>(() => new Date());
 
   const loadData = async () => {
     setLoading(true);
