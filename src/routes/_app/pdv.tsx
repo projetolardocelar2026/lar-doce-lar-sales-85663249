@@ -408,9 +408,20 @@ function PDVPage() {
             </div>
 
             <div>
-              <Label className="mb-2 block">
-                Cliente {forma === "caderneta" && <span className="text-destructive">*</span>}
-              </Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label>
+                  Cliente {forma === "caderneta" && <span className="text-destructive">*</span>}
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setShowNovoCliente(true)}
+                >
+                  <UserPlus className="h-3.5 w-3.5 mr-1" /> Novo cliente
+                </Button>
+              </div>
               <Select value={clienteId || "none"} onValueChange={(v) => setClienteId(v === "none" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sem cliente (venda avulsa)" />
