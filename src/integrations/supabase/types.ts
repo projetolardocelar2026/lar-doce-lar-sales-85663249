@@ -195,6 +195,36 @@ export type Database = {
           },
         ]
       }
+      metas: {
+        Row: {
+          ano: number
+          created_at: string
+          id: string
+          mes: number
+          observacoes: string | null
+          updated_at: string
+          valor_meta: number
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          id?: string
+          mes: number
+          observacoes?: string | null
+          updated_at?: string
+          valor_meta?: number
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          id?: string
+          mes?: number
+          observacoes?: string | null
+          updated_at?: string
+          valor_meta?: number
+        }
+        Relationships: []
+      }
       pagamentos_caderneta: {
         Row: {
           atendente_id: string | null

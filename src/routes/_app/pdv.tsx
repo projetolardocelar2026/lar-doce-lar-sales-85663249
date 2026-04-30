@@ -18,8 +18,8 @@ import {
 import { brl, formaPagamentoLabel } from "@/lib/format";
 import { toast } from "sonner";
 import {
-  Search, Plus, Minus, Trash2, ShoppingCart, X, Check, User,
-  Banknote, CreditCard, Smartphone, Notebook,
+  Search, Plus, Minus, Trash2, ShoppingCart, X, Check, User, UserPlus,
+  Banknote, CreditCard, Smartphone, Notebook, Clock,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/pdv")({
@@ -56,7 +56,7 @@ const FORMAS: { value: Forma; label: string; icon: typeof Banknote }[] = [
 ];
 
 function PDVPage() {
-  const { user } = useAuth();
+  const { user, nomeCompleto, role } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -71,6 +71,10 @@ function PDVPage() {
   const [saving, setSaving] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showCart, setShowCart] = useState(false);
+  const [showNovoCliente, setShowNovoCliente] = useState(false);
+  const [novoCli, setNovoCli] = useState({ nome: "", telefone: "", documento: "", limite_caderneta: "" });
+  const [savingCli, setSavingCli] = useState(false);
+  const [aberturaCaixa] = useState<Date>(() => new Date());
 
   const loadData = async () => {
     setLoading(true);
@@ -196,6 +200,39 @@ function PDVPage() {
     }
   };
 
+  const cadastrarCliente = async () => {
+    const nome = novoCli.nome.trim();
+    if (!nome) { toast.error("Informe o nome"); return; }
+    setSavingCli(true);
+    try {
+      const limite = parseFloat((novoCli.limite_caderneta || "0").replace(",", ".")) || 0;
+      const { data, error } = await supabase
+        .from("clientes")
+        .insert({
+          nome,
+          telefone: novoCli.telefone.trim() || null,
+          documento: novoCli.documento.trim() || null,
+          limite_caderneta: limite,
+        })
+        .select("id,nome,telefone,saldo_devedor,limite_caderneta")
+        .single();
+      if (error || !data) throw error ?? new Error("Falha ao cadastrar");
+      setClientes((cur) => [...cur, data as Cliente].sort((a, b) => a.nome.localeCompare(b.nome)));
+      setClienteId(data.id);
+      toast.success("Cliente cadastrado!");
+      setShowNovoCliente(false);
+      setNovoCli({ nome: "", telefone: "", documento: "", limite_caderneta: "" });
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao cadastrar cliente");
+    } finally {
+      setSavingCli(false);
+    }
+  };
+
+  const horaAbertura = aberturaCaixa.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const dataAbertura = aberturaCaixa.toLocaleDateString("pt-BR");
+  const operadorNome = nomeCompleto || user?.email || "Operador";
+
   return (
     <div>
       <PageHeader
@@ -215,6 +252,31 @@ function PDVPage() {
           </Button>
         }
       />
+
+      {/* Barra do operador / abertura do caixa */}
+      <Card className="mb-4 bg-gradient-card border-brand-sky/30">
+        <CardContent className="p-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+              {operadorNome.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Operador(a)</div>
+              <div className="font-semibold leading-tight">{operadorNome}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <div className="text-xs text-muted-foreground">Caixa aberto em</div>
+              <div className="font-semibold leading-tight">{dataAbertura} às {horaAbertura}</div>
+            </div>
+          </div>
+          {role && (
+            <Badge variant="secondary" className="ml-auto capitalize">{role}</Badge>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid lg:grid-cols-[1fr_380px] gap-4">
         {/* Produtos */}
@@ -346,9 +408,20 @@ function PDVPage() {
             </div>
 
             <div>
-              <Label className="mb-2 block">
-                Cliente {forma === "caderneta" && <span className="text-destructive">*</span>}
-              </Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label>
+                  Cliente {forma === "caderneta" && <span className="text-destructive">*</span>}
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setShowNovoCliente(true)}
+                >
+                  <UserPlus className="h-3.5 w-3.5 mr-1" /> Novo cliente
+                </Button>
+              </div>
               <Select value={clienteId || "none"} onValueChange={(v) => setClienteId(v === "none" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sem cliente (venda avulsa)" />
@@ -406,6 +479,63 @@ function PDVPage() {
             <Button onClick={finalizar} disabled={saving}>
               <Check className="h-4 w-4 mr-2" />
               {saving ? "Salvando…" : `Confirmar ${brl(total)}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Novo cliente */}
+      <Dialog open={showNovoCliente} onOpenChange={setShowNovoCliente}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" /> Cadastrar novo cliente
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="mb-1 block">Nome <span className="text-destructive">*</span></Label>
+              <Input
+                value={novoCli.nome}
+                onChange={(e) => setNovoCli((s) => ({ ...s, nome: e.target.value }))}
+                placeholder="Nome completo"
+                autoFocus
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block">Telefone</Label>
+                <Input
+                  value={novoCli.telefone}
+                  onChange={(e) => setNovoCli((s) => ({ ...s, telefone: e.target.value }))}
+                  placeholder="(11) 9..."
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block">CPF / Doc</Label>
+                <Input
+                  value={novoCli.documento}
+                  onChange={(e) => setNovoCli((s) => ({ ...s, documento: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="mb-1 block">Limite na caderneta (R$)</Label>
+              <Input
+                inputMode="decimal"
+                value={novoCli.limite_caderneta}
+                onChange={(e) => setNovoCli((s) => ({ ...s, limite_caderneta: e.target.value }))}
+                placeholder="0,00"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowNovoCliente(false)} disabled={savingCli}>
+              Cancelar
+            </Button>
+            <Button onClick={cadastrarCliente} disabled={savingCli}>
+              <Check className="h-4 w-4 mr-2" />
+              {savingCli ? "Salvando…" : "Cadastrar"}
             </Button>
           </DialogFooter>
         </DialogContent>
