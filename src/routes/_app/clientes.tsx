@@ -177,12 +177,16 @@ function ClientesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Clientes" description="Cadastros e histórico de compras">
-        <Button onClick={abrirNovo}>
-          <Plus className="size-4 mr-2" />
-          Novo cliente
-        </Button>
-      </PageHeader>
+      <PageHeader
+        title="Clientes"
+        description="Cadastros e histórico de compras"
+        actions={
+          <Button onClick={abrirNovo}>
+            <Plus className="size-4 mr-2" />
+            Novo cliente
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader className="pb-3">
