@@ -28,7 +28,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Search, Phone, Mail, MapPin, User } from "lucide-react";
-import { formatBRL } from "@/lib/format";
+import { brl as formatBRL } from "@/lib/format";
 
 type Cliente = {
   id: string;
