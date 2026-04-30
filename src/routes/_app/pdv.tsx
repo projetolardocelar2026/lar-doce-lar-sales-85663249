@@ -483,6 +483,63 @@ function PDVPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Novo cliente */}
+      <Dialog open={showNovoCliente} onOpenChange={setShowNovoCliente}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" /> Cadastrar novo cliente
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="mb-1 block">Nome <span className="text-destructive">*</span></Label>
+              <Input
+                value={novoCli.nome}
+                onChange={(e) => setNovoCli((s) => ({ ...s, nome: e.target.value }))}
+                placeholder="Nome completo"
+                autoFocus
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block">Telefone</Label>
+                <Input
+                  value={novoCli.telefone}
+                  onChange={(e) => setNovoCli((s) => ({ ...s, telefone: e.target.value }))}
+                  placeholder="(11) 9..."
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block">CPF / Doc</Label>
+                <Input
+                  value={novoCli.documento}
+                  onChange={(e) => setNovoCli((s) => ({ ...s, documento: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="mb-1 block">Limite na caderneta (R$)</Label>
+              <Input
+                inputMode="decimal"
+                value={novoCli.limite_caderneta}
+                onChange={(e) => setNovoCli((s) => ({ ...s, limite_caderneta: e.target.value }))}
+                placeholder="0,00"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowNovoCliente(false)} disabled={savingCli}>
+              Cancelar
+            </Button>
+            <Button onClick={cadastrarCliente} disabled={savingCli}>
+              <Check className="h-4 w-4 mr-2" />
+              {savingCli ? "Salvando…" : "Cadastrar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
