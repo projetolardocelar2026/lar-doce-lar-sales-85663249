@@ -200,6 +200,39 @@ function PDVPage() {
     }
   };
 
+  const cadastrarCliente = async () => {
+    const nome = novoCli.nome.trim();
+    if (!nome) { toast.error("Informe o nome"); return; }
+    setSavingCli(true);
+    try {
+      const limite = parseFloat((novoCli.limite_caderneta || "0").replace(",", ".")) || 0;
+      const { data, error } = await supabase
+        .from("clientes")
+        .insert({
+          nome,
+          telefone: novoCli.telefone.trim() || null,
+          documento: novoCli.documento.trim() || null,
+          limite_caderneta: limite,
+        })
+        .select("id,nome,telefone,saldo_devedor,limite_caderneta")
+        .single();
+      if (error || !data) throw error ?? new Error("Falha ao cadastrar");
+      setClientes((cur) => [...cur, data as Cliente].sort((a, b) => a.nome.localeCompare(b.nome)));
+      setClienteId(data.id);
+      toast.success("Cliente cadastrado!");
+      setShowNovoCliente(false);
+      setNovoCli({ nome: "", telefone: "", documento: "", limite_caderneta: "" });
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao cadastrar cliente");
+    } finally {
+      setSavingCli(false);
+    }
+  };
+
+  const horaAbertura = aberturaCaixa.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const dataAbertura = aberturaCaixa.toLocaleDateString("pt-BR");
+  const operadorNome = nomeCompleto || user?.email || "Operador";
+
   return (
     <div>
       <PageHeader
@@ -219,6 +252,31 @@ function PDVPage() {
           </Button>
         }
       />
+
+      {/* Barra do operador / abertura do caixa */}
+      <Card className="mb-4 bg-gradient-card border-brand-sky/30">
+        <CardContent className="p-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+              {operadorNome.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Operador(a)</div>
+              <div className="font-semibold leading-tight">{operadorNome}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <div className="text-xs text-muted-foreground">Caixa aberto em</div>
+              <div className="font-semibold leading-tight">{dataAbertura} às {horaAbertura}</div>
+            </div>
+          </div>
+          {role && (
+            <Badge variant="secondary" className="ml-auto capitalize">{role}</Badge>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid lg:grid-cols-[1fr_380px] gap-4">
         {/* Produtos */}
