@@ -48,9 +48,12 @@ export type Database = {
           documento: string | null
           email: string | null
           endereco: string | null
+          facebook: string | null
           id: string
+          instagram: string | null
           limite_caderneta: number
           nome: string
+          observacao_relacionamento: string | null
           observacoes: string | null
           saldo_devedor: number
           telefone: string | null
@@ -62,9 +65,12 @@ export type Database = {
           documento?: string | null
           email?: string | null
           endereco?: string | null
+          facebook?: string | null
           id?: string
+          instagram?: string | null
           limite_caderneta?: number
           nome: string
+          observacao_relacionamento?: string | null
           observacoes?: string | null
           saldo_devedor?: number
           telefone?: string | null
@@ -76,9 +82,12 @@ export type Database = {
           documento?: string | null
           email?: string | null
           endereco?: string | null
+          facebook?: string | null
           id?: string
+          instagram?: string | null
           limite_caderneta?: number
           nome?: string
+          observacao_relacionamento?: string | null
           observacoes?: string | null
           saldo_devedor?: number
           telefone?: string | null
