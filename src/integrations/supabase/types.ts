@@ -95,6 +95,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cupons_enviados: {
+        Row: {
+          atendente_id: string | null
+          cliente_id: string
+          conteudo: string
+          created_at: string
+          enviado_via: string
+          id: string
+          venda_id: string | null
+        }
+        Insert: {
+          atendente_id?: string | null
+          cliente_id: string
+          conteudo: string
+          created_at?: string
+          enviado_via?: string
+          id?: string
+          venda_id?: string | null
+        }
+        Update: {
+          atendente_id?: string | null
+          cliente_id?: string
+          conteudo?: string
+          created_at?: string
+          enviado_via?: string
+          id?: string
+          venda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cupons_enviados_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cupons_enviados_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fluxo_caixa: {
         Row: {
           created_at: string
