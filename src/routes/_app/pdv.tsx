@@ -199,6 +199,29 @@ function PDVPage() {
       if (iErr) throw iErr;
 
       toast.success("Venda finalizada!");
+
+      // Cupom digital se houver cliente cadastrado
+      if (cliente) {
+        const saldoAtualizado =
+          forma === "caderneta" ? Number(cliente.saldo_devedor) + total : null;
+        const texto = gerarTextoCupom({
+          vendaId: venda.id,
+          data: new Date(),
+          clienteNome: cliente.nome,
+          itens: cart.map((i) => ({ nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
+          total,
+          formaPagamento: forma,
+          saldoCadernetaAtualizado: saldoAtualizado,
+          catalogoUrl,
+        });
+        setCupomVenda({
+          cliente: cliente as Cliente,
+          vendaId: venda.id,
+          texto,
+          saldoAtualizado,
+        });
+      }
+
       clearCart();
       setShowCheckout(false);
       setShowCart(false);
@@ -208,6 +231,21 @@ function PDVPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const enviarCupomWhatsApp = async () => {
+    if (!cupomVenda) return;
+    abrirWhatsApp(cupomVenda.cliente.telefone, cupomVenda.texto);
+    // Salva no histórico
+    const { error } = await supabase.from("cupons_enviados").insert({
+      cliente_id: cupomVenda.cliente.id,
+      venda_id: cupomVenda.vendaId,
+      conteudo: cupomVenda.texto,
+      atendente_id: user?.id ?? null,
+    });
+    if (error) console.warn("Falha ao salvar cupom:", error.message);
+    else toast.success("Cupom registrado no histórico do cliente");
+    setCupomVenda(null);
   };
 
   const cadastrarCliente = async () => {
