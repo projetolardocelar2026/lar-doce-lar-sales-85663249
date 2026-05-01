@@ -15,12 +15,14 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { brl, formaPagamentoLabel } from "@/lib/format";
+import { brl, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
 import { toast } from "sonner";
 import {
-  Search, Plus, Minus, Trash2, ShoppingCart, X, Check, User, UserPlus,
-  Banknote, CreditCard, Smartphone, Notebook, Clock,
+  Search, Plus, Minus, Trash2, ShoppingCart, X, Check, UserPlus,
+  Banknote, CreditCard, Smartphone, Notebook, Clock, MessageCircle, AlertTriangle,
 } from "lucide-react";
+import { validateDocumento, validateTelefone, maskDocumento, maskTelefone } from "@/lib/validators";
+import { gerarTextoCupom, abrirWhatsApp } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/_app/pdv")({
   component: PDVPage,
