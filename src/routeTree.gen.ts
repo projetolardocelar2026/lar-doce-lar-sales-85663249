@@ -15,8 +15,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRelatoriosRouteImport } from './routes/_app/relatorios'
 import { Route as AppProdutosRouteImport } from './routes/_app/produtos'
 import { Route as AppPdvRouteImport } from './routes/_app/pdv'
+import { Route as AppOrcamentosRouteImport } from './routes/_app/orcamentos'
 import { Route as AppFluxoCaixaRouteImport } from './routes/_app/fluxo-caixa'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppContasPagarRouteImport } from './routes/_app/contas-pagar'
 import { Route as AppClientesRouteImport } from './routes/_app/clientes'
 import { Route as AppCategoriasRouteImport } from './routes/_app/categorias'
 import { Route as AppCadernetaRouteImport } from './routes/_app/caderneta'
@@ -50,6 +52,11 @@ const AppPdvRoute = AppPdvRouteImport.update({
   path: '/pdv',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOrcamentosRoute = AppOrcamentosRouteImport.update({
+  id: '/orcamentos',
+  path: '/orcamentos',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFluxoCaixaRoute = AppFluxoCaixaRouteImport.update({
   id: '/fluxo-caixa',
   path: '/fluxo-caixa',
@@ -58,6 +65,11 @@ const AppFluxoCaixaRoute = AppFluxoCaixaRouteImport.update({
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContasPagarRoute = AppContasPagarRouteImport.update({
+  id: '/contas-pagar',
+  path: '/contas-pagar',
   getParentRoute: () => AppRoute,
 } as any)
 const AppClientesRoute = AppClientesRouteImport.update({
@@ -82,8 +94,10 @@ export interface FileRoutesByFullPath {
   '/caderneta': typeof AppCadernetaRoute
   '/categorias': typeof AppCategoriasRoute
   '/clientes': typeof AppClientesRoute
+  '/contas-pagar': typeof AppContasPagarRoute
   '/dashboard': typeof AppDashboardRoute
   '/fluxo-caixa': typeof AppFluxoCaixaRoute
+  '/orcamentos': typeof AppOrcamentosRoute
   '/pdv': typeof AppPdvRoute
   '/produtos': typeof AppProdutosRoute
   '/relatorios': typeof AppRelatoriosRoute
@@ -94,8 +108,10 @@ export interface FileRoutesByTo {
   '/caderneta': typeof AppCadernetaRoute
   '/categorias': typeof AppCategoriasRoute
   '/clientes': typeof AppClientesRoute
+  '/contas-pagar': typeof AppContasPagarRoute
   '/dashboard': typeof AppDashboardRoute
   '/fluxo-caixa': typeof AppFluxoCaixaRoute
+  '/orcamentos': typeof AppOrcamentosRoute
   '/pdv': typeof AppPdvRoute
   '/produtos': typeof AppProdutosRoute
   '/relatorios': typeof AppRelatoriosRoute
@@ -108,8 +124,10 @@ export interface FileRoutesById {
   '/_app/caderneta': typeof AppCadernetaRoute
   '/_app/categorias': typeof AppCategoriasRoute
   '/_app/clientes': typeof AppClientesRoute
+  '/_app/contas-pagar': typeof AppContasPagarRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/fluxo-caixa': typeof AppFluxoCaixaRoute
+  '/_app/orcamentos': typeof AppOrcamentosRoute
   '/_app/pdv': typeof AppPdvRoute
   '/_app/produtos': typeof AppProdutosRoute
   '/_app/relatorios': typeof AppRelatoriosRoute
@@ -122,8 +140,10 @@ export interface FileRouteTypes {
     | '/caderneta'
     | '/categorias'
     | '/clientes'
+    | '/contas-pagar'
     | '/dashboard'
     | '/fluxo-caixa'
+    | '/orcamentos'
     | '/pdv'
     | '/produtos'
     | '/relatorios'
@@ -134,8 +154,10 @@ export interface FileRouteTypes {
     | '/caderneta'
     | '/categorias'
     | '/clientes'
+    | '/contas-pagar'
     | '/dashboard'
     | '/fluxo-caixa'
+    | '/orcamentos'
     | '/pdv'
     | '/produtos'
     | '/relatorios'
@@ -147,8 +169,10 @@ export interface FileRouteTypes {
     | '/_app/caderneta'
     | '/_app/categorias'
     | '/_app/clientes'
+    | '/_app/contas-pagar'
     | '/_app/dashboard'
     | '/_app/fluxo-caixa'
+    | '/_app/orcamentos'
     | '/_app/pdv'
     | '/_app/produtos'
     | '/_app/relatorios'
@@ -204,6 +228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPdvRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/orcamentos': {
+      id: '/_app/orcamentos'
+      path: '/orcamentos'
+      fullPath: '/orcamentos'
+      preLoaderRoute: typeof AppOrcamentosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/fluxo-caixa': {
       id: '/_app/fluxo-caixa'
       path: '/fluxo-caixa'
@@ -216,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/contas-pagar': {
+      id: '/_app/contas-pagar'
+      path: '/contas-pagar'
+      fullPath: '/contas-pagar'
+      preLoaderRoute: typeof AppContasPagarRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/clientes': {
@@ -246,8 +284,10 @@ interface AppRouteChildren {
   AppCadernetaRoute: typeof AppCadernetaRoute
   AppCategoriasRoute: typeof AppCategoriasRoute
   AppClientesRoute: typeof AppClientesRoute
+  AppContasPagarRoute: typeof AppContasPagarRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppFluxoCaixaRoute: typeof AppFluxoCaixaRoute
+  AppOrcamentosRoute: typeof AppOrcamentosRoute
   AppPdvRoute: typeof AppPdvRoute
   AppProdutosRoute: typeof AppProdutosRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
@@ -257,8 +297,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppCadernetaRoute: AppCadernetaRoute,
   AppCategoriasRoute: AppCategoriasRoute,
   AppClientesRoute: AppClientesRoute,
+  AppContasPagarRoute: AppContasPagarRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppFluxoCaixaRoute: AppFluxoCaixaRoute,
+  AppOrcamentosRoute: AppOrcamentosRoute,
   AppPdvRoute: AppPdvRoute,
   AppProdutosRoute: AppProdutosRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
@@ -274,12 +316,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

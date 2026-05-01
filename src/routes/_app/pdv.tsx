@@ -15,12 +15,14 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { brl, formaPagamentoLabel } from "@/lib/format";
+import { brl, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
 import { toast } from "sonner";
 import {
-  Search, Plus, Minus, Trash2, ShoppingCart, X, Check, User, UserPlus,
-  Banknote, CreditCard, Smartphone, Notebook, Clock,
+  Search, Plus, Minus, Trash2, ShoppingCart, X, Check, UserPlus,
+  Banknote, CreditCard, Smartphone, Notebook, Clock, MessageCircle, AlertTriangle,
 } from "lucide-react";
+import { validateDocumento, validateTelefone, maskDocumento, maskTelefone } from "@/lib/validators";
+import { gerarTextoCupom, abrirWhatsApp } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/_app/pdv")({
   component: PDVPage,
@@ -73,8 +75,16 @@ function PDVPage() {
   const [showCart, setShowCart] = useState(false);
   const [showNovoCliente, setShowNovoCliente] = useState(false);
   const [novoCli, setNovoCli] = useState({ nome: "", telefone: "", documento: "", limite_caderneta: "" });
+  const [novoCliErr, setNovoCliErr] = useState<{ nome?: string; telefone?: string; documento?: string }>({});
   const [savingCli, setSavingCli] = useState(false);
   const [aberturaCaixa] = useState<Date>(() => new Date());
+  const [cupomVenda, setCupomVenda] = useState<null | {
+    cliente: Cliente;
+    vendaId: string;
+    texto: string;
+    saldoAtualizado: number | null;
+  }>(null);
+  const catalogoUrl = typeof window !== "undefined" ? `${window.location.origin}/` : "";
 
   const loadData = async () => {
     setLoading(true);
@@ -189,6 +199,29 @@ function PDVPage() {
       if (iErr) throw iErr;
 
       toast.success("Venda finalizada!");
+
+      // Cupom digital se houver cliente cadastrado
+      if (cliente) {
+        const saldoAtualizado =
+          forma === "caderneta" ? Number(cliente.saldo_devedor) + total : null;
+        const texto = gerarTextoCupom({
+          vendaId: venda.id,
+          data: new Date(),
+          clienteNome: cliente.nome,
+          itens: cart.map((i) => ({ nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
+          total,
+          formaPagamento: forma,
+          saldoCadernetaAtualizado: saldoAtualizado,
+          catalogoUrl,
+        });
+        setCupomVenda({
+          cliente: cliente as Cliente,
+          vendaId: venda.id,
+          texto,
+          saldoAtualizado,
+        });
+      }
+
       clearCart();
       setShowCheckout(false);
       setShowCart(false);
@@ -200,16 +233,40 @@ function PDVPage() {
     }
   };
 
+  const enviarCupomWhatsApp = async () => {
+    if (!cupomVenda) return;
+    abrirWhatsApp(cupomVenda.cliente.telefone, cupomVenda.texto);
+    // Salva no histórico
+    const { error } = await supabase.from("cupons_enviados").insert({
+      cliente_id: cupomVenda.cliente.id,
+      venda_id: cupomVenda.vendaId,
+      conteudo: cupomVenda.texto,
+      atendente_id: user?.id ?? null,
+    });
+    if (error) console.warn("Falha ao salvar cupom:", error.message);
+    else toast.success("Cupom registrado no histórico do cliente");
+    setCupomVenda(null);
+  };
+
   const cadastrarCliente = async () => {
-    const nome = novoCli.nome.trim();
-    if (!nome) { toast.error("Informe o nome"); return; }
+    const errs: typeof novoCliErr = {};
+    if (!novoCli.nome.trim()) errs.nome = "Informe o nome";
+    const docErr = validateDocumento(novoCli.documento);
+    if (docErr) errs.documento = docErr;
+    const telErr = validateTelefone(novoCli.telefone);
+    if (telErr) errs.telefone = telErr;
+    setNovoCliErr(errs);
+    if (Object.keys(errs).length > 0) {
+      toast.error("Verifique os campos destacados");
+      return;
+    }
     setSavingCli(true);
     try {
       const limite = parseFloat((novoCli.limite_caderneta || "0").replace(",", ".")) || 0;
       const { data, error } = await supabase
         .from("clientes")
         .insert({
-          nome,
+          nome: novoCli.nome.trim(),
           telefone: novoCli.telefone.trim() || null,
           documento: novoCli.documento.trim() || null,
           limite_caderneta: limite,
@@ -222,6 +279,7 @@ function PDVPage() {
       toast.success("Cliente cadastrado!");
       setShowNovoCliente(false);
       setNovoCli({ nome: "", telefone: "", documento: "", limite_caderneta: "" });
+      setNovoCliErr({});
     } catch (e: any) {
       toast.error(e.message || "Erro ao cadastrar cliente");
     } finally {
@@ -435,13 +493,32 @@ function PDVPage() {
                   ))}
                 </SelectContent>
               </Select>
-              {forma === "caderneta" && cliente && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Saldo atual: <strong>{brl(cliente.saldo_devedor)}</strong>
-                  {Number(cliente.limite_caderneta) > 0 && (
-                    <> — Limite: {brl(cliente.limite_caderneta)}</>
+              {cliente && (
+                <div className="mt-2 rounded-md border bg-muted/40 p-2.5 text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Saldo devedor</span>
+                    <strong className={Number(cliente.saldo_devedor) > 0 ? "text-destructive" : ""}>
+                      {brl(cliente.saldo_devedor)}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Limite caderneta</span>
+                    <strong>{Number(cliente.limite_caderneta) > 0 ? brl(cliente.limite_caderneta) : "Sem limite"}</strong>
+                  </div>
+                  {forma === "caderneta" && (
+                    <div className="flex justify-between border-t pt-1">
+                      <span className="text-muted-foreground">Saldo após esta venda</span>
+                      <strong className="text-primary">{brl(Number(cliente.saldo_devedor) + total)}</strong>
+                    </div>
                   )}
-                </p>
+                  {forma === "caderneta" && Number(cliente.limite_caderneta) > 0 &&
+                    Number(cliente.saldo_devedor) + total > Number(cliente.limite_caderneta) && (
+                    <div className="flex items-center gap-1 text-destructive font-medium pt-1">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Limite excedido em {brl(Number(cliente.saldo_devedor) + total - Number(cliente.limite_caderneta))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
@@ -500,23 +577,29 @@ function PDVPage() {
                 onChange={(e) => setNovoCli((s) => ({ ...s, nome: e.target.value }))}
                 placeholder="Nome completo"
                 autoFocus
+                aria-invalid={!!novoCliErr.nome}
               />
+              {novoCliErr.nome && <p className="text-xs text-destructive mt-1">{novoCliErr.nome}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="mb-1 block">Telefone</Label>
                 <Input
                   value={novoCli.telefone}
-                  onChange={(e) => setNovoCli((s) => ({ ...s, telefone: e.target.value }))}
-                  placeholder="(11) 9..."
+                  onChange={(e) => setNovoCli((s) => ({ ...s, telefone: maskTelefone(e.target.value) }))}
+                  placeholder="(11) 90000-0000"
+                  aria-invalid={!!novoCliErr.telefone}
                 />
+                {novoCliErr.telefone && <p className="text-xs text-destructive mt-1">{novoCliErr.telefone}</p>}
               </div>
               <div>
-                <Label className="mb-1 block">CPF / Doc</Label>
+                <Label className="mb-1 block">CPF / CNPJ</Label>
                 <Input
                   value={novoCli.documento}
-                  onChange={(e) => setNovoCli((s) => ({ ...s, documento: e.target.value }))}
+                  onChange={(e) => setNovoCli((s) => ({ ...s, documento: maskDocumento(e.target.value) }))}
+                  aria-invalid={!!novoCliErr.documento}
                 />
+                {novoCliErr.documento && <p className="text-xs text-destructive mt-1">{novoCliErr.documento}</p>}
               </div>
             </div>
             <div>
@@ -536,6 +619,40 @@ function PDVPage() {
             <Button onClick={cadastrarCliente} disabled={savingCli}>
               <Check className="h-4 w-4 mr-2" />
               {savingCli ? "Salvando…" : "Cadastrar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cupom Digital pós-venda */}
+      <Dialog open={!!cupomVenda} onOpenChange={(o) => !o && setCupomVenda(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-success" /> Venda finalizada
+            </DialogTitle>
+          </DialogHeader>
+          {cupomVenda && (
+            <div className="space-y-3">
+              <div className="text-sm">
+                Cliente: <strong>{cupomVenda.cliente.nome}</strong>
+                {cupomVenda.cliente.telefone && <> — {cupomVenda.cliente.telefone}</>}
+              </div>
+              <div className="rounded-md border bg-muted/30 p-3 max-h-60 overflow-y-auto">
+                <pre className="text-xs whitespace-pre-wrap font-sans">{cupomVenda.texto}</pre>
+              </div>
+              {!cupomVenda.cliente.telefone && (
+                <p className="text-xs text-muted-foreground">
+                  Cliente sem telefone cadastrado. Cadastre o WhatsApp para enviar diretamente.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setCupomVenda(null)}>Fechar</Button>
+            <Button onClick={enviarCupomWhatsApp} disabled={!cupomVenda?.cliente.telefone}>
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Enviar via WhatsApp
             </Button>
           </DialogFooter>
         </DialogContent>
