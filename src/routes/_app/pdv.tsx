@@ -577,23 +577,29 @@ function PDVPage() {
                 onChange={(e) => setNovoCli((s) => ({ ...s, nome: e.target.value }))}
                 placeholder="Nome completo"
                 autoFocus
+                aria-invalid={!!novoCliErr.nome}
               />
+              {novoCliErr.nome && <p className="text-xs text-destructive mt-1">{novoCliErr.nome}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="mb-1 block">Telefone</Label>
                 <Input
                   value={novoCli.telefone}
-                  onChange={(e) => setNovoCli((s) => ({ ...s, telefone: e.target.value }))}
-                  placeholder="(11) 9..."
+                  onChange={(e) => setNovoCli((s) => ({ ...s, telefone: maskTelefone(e.target.value) }))}
+                  placeholder="(11) 90000-0000"
+                  aria-invalid={!!novoCliErr.telefone}
                 />
+                {novoCliErr.telefone && <p className="text-xs text-destructive mt-1">{novoCliErr.telefone}</p>}
               </div>
               <div>
-                <Label className="mb-1 block">CPF / Doc</Label>
+                <Label className="mb-1 block">CPF / CNPJ</Label>
                 <Input
                   value={novoCli.documento}
-                  onChange={(e) => setNovoCli((s) => ({ ...s, documento: e.target.value }))}
+                  onChange={(e) => setNovoCli((s) => ({ ...s, documento: maskDocumento(e.target.value) }))}
+                  aria-invalid={!!novoCliErr.documento}
                 />
+                {novoCliErr.documento && <p className="text-xs text-destructive mt-1">{novoCliErr.documento}</p>}
               </div>
             </div>
             <div>
