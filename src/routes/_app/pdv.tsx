@@ -623,6 +623,40 @@ function PDVPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Cupom Digital pós-venda */}
+      <Dialog open={!!cupomVenda} onOpenChange={(o) => !o && setCupomVenda(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-success" /> Venda finalizada
+            </DialogTitle>
+          </DialogHeader>
+          {cupomVenda && (
+            <div className="space-y-3">
+              <div className="text-sm">
+                Cliente: <strong>{cupomVenda.cliente.nome}</strong>
+                {cupomVenda.cliente.telefone && <> — {cupomVenda.cliente.telefone}</>}
+              </div>
+              <div className="rounded-md border bg-muted/30 p-3 max-h-60 overflow-y-auto">
+                <pre className="text-xs whitespace-pre-wrap font-sans">{cupomVenda.texto}</pre>
+              </div>
+              {!cupomVenda.cliente.telefone && (
+                <p className="text-xs text-muted-foreground">
+                  Cliente sem telefone cadastrado. Cadastre o WhatsApp para enviar diretamente.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setCupomVenda(null)}>Fechar</Button>
+            <Button onClick={enviarCupomWhatsApp} disabled={!cupomVenda?.cliente.telefone}>
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Enviar via WhatsApp
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
