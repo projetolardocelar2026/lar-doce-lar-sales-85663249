@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 import {
   LayoutDashboard, ShoppingCart, Package, Tags, Users, Notebook,
-  BarChart3, Wallet, LogOut, Store, Menu,
+  BarChart3, Wallet, LogOut, Store, Menu, FileText, Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -23,6 +23,8 @@ const NAV: NavItem[] = [
   { to: "/categorias", label: "Categorias", icon: Tags, adminOnly: true },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/caderneta", label: "Caderneta", icon: Notebook },
+  { to: "/orcamentos", label: "Orçamentos", icon: FileText },
+  { to: "/contas-pagar", label: "Contas a Pagar", icon: Receipt, adminOnly: true },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3, adminOnly: true },
   { to: "/fluxo-caixa", label: "Fluxo de Caixa", icon: Wallet, adminOnly: true },
 ];
