@@ -493,13 +493,32 @@ function PDVPage() {
                   ))}
                 </SelectContent>
               </Select>
-              {forma === "caderneta" && cliente && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Saldo atual: <strong>{brl(cliente.saldo_devedor)}</strong>
-                  {Number(cliente.limite_caderneta) > 0 && (
-                    <> — Limite: {brl(cliente.limite_caderneta)}</>
+              {cliente && (
+                <div className="mt-2 rounded-md border bg-muted/40 p-2.5 text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Saldo devedor</span>
+                    <strong className={Number(cliente.saldo_devedor) > 0 ? "text-destructive" : ""}>
+                      {brl(cliente.saldo_devedor)}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Limite caderneta</span>
+                    <strong>{Number(cliente.limite_caderneta) > 0 ? brl(cliente.limite_caderneta) : "Sem limite"}</strong>
+                  </div>
+                  {forma === "caderneta" && (
+                    <div className="flex justify-between border-t pt-1">
+                      <span className="text-muted-foreground">Saldo após esta venda</span>
+                      <strong className="text-primary">{brl(Number(cliente.saldo_devedor) + total)}</strong>
+                    </div>
                   )}
-                </p>
+                  {forma === "caderneta" && Number(cliente.limite_caderneta) > 0 &&
+                    Number(cliente.saldo_devedor) + total > Number(cliente.limite_caderneta) && (
+                    <div className="flex items-center gap-1 text-destructive font-medium pt-1">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Limite excedido em {brl(Number(cliente.saldo_devedor) + total - Number(cliente.limite_caderneta))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
