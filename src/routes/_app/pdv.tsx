@@ -249,15 +249,24 @@ function PDVPage() {
   };
 
   const cadastrarCliente = async () => {
-    const nome = novoCli.nome.trim();
-    if (!nome) { toast.error("Informe o nome"); return; }
+    const errs: typeof novoCliErr = {};
+    if (!novoCli.nome.trim()) errs.nome = "Informe o nome";
+    const docErr = validateDocumento(novoCli.documento);
+    if (docErr) errs.documento = docErr;
+    const telErr = validateTelefone(novoCli.telefone);
+    if (telErr) errs.telefone = telErr;
+    setNovoCliErr(errs);
+    if (Object.keys(errs).length > 0) {
+      toast.error("Verifique os campos destacados");
+      return;
+    }
     setSavingCli(true);
     try {
       const limite = parseFloat((novoCli.limite_caderneta || "0").replace(",", ".")) || 0;
       const { data, error } = await supabase
         .from("clientes")
         .insert({
-          nome,
+          nome: novoCli.nome.trim(),
           telefone: novoCli.telefone.trim() || null,
           documento: novoCli.documento.trim() || null,
           limite_caderneta: limite,
@@ -270,6 +279,7 @@ function PDVPage() {
       toast.success("Cliente cadastrado!");
       setShowNovoCliente(false);
       setNovoCli({ nome: "", telefone: "", documento: "", limite_caderneta: "" });
+      setNovoCliErr({});
     } catch (e: any) {
       toast.error(e.message || "Erro ao cadastrar cliente");
     } finally {
