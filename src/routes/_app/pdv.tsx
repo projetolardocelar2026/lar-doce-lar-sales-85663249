@@ -75,8 +75,16 @@ function PDVPage() {
   const [showCart, setShowCart] = useState(false);
   const [showNovoCliente, setShowNovoCliente] = useState(false);
   const [novoCli, setNovoCli] = useState({ nome: "", telefone: "", documento: "", limite_caderneta: "" });
+  const [novoCliErr, setNovoCliErr] = useState<{ nome?: string; telefone?: string; documento?: string }>({});
   const [savingCli, setSavingCli] = useState(false);
   const [aberturaCaixa] = useState<Date>(() => new Date());
+  const [cupomVenda, setCupomVenda] = useState<null | {
+    cliente: Cliente;
+    vendaId: string;
+    texto: string;
+    saldoAtualizado: number | null;
+  }>(null);
+  const catalogoUrl = typeof window !== "undefined" ? `${window.location.origin}/` : "";
 
   const loadData = async () => {
     setLoading(true);
