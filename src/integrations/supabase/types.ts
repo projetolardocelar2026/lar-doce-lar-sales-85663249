@@ -95,6 +95,54 @@ export type Database = {
         }
         Relationships: []
       }
+      contas_pagar: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          data_pagamento: string | null
+          descricao: string
+          forma_pagamento: string | null
+          fornecedor: string | null
+          id: string
+          observacoes: string | null
+          recorrente: boolean
+          status: Database["public"]["Enums"]["status_conta_pagar"]
+          updated_at: string
+          valor: number
+          vencimento: string
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          data_pagamento?: string | null
+          descricao: string
+          forma_pagamento?: string | null
+          fornecedor?: string | null
+          id?: string
+          observacoes?: string | null
+          recorrente?: boolean
+          status?: Database["public"]["Enums"]["status_conta_pagar"]
+          updated_at?: string
+          valor?: number
+          vencimento: string
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          data_pagamento?: string | null
+          descricao?: string
+          forma_pagamento?: string | null
+          fornecedor?: string | null
+          id?: string
+          observacoes?: string | null
+          recorrente?: boolean
+          status?: Database["public"]["Enums"]["status_conta_pagar"]
+          updated_at?: string
+          valor?: number
+          vencimento?: string
+        }
+        Relationships: []
+      }
       cupons_enviados: {
         Row: {
           atendente_id: string | null
@@ -191,6 +239,57 @@ export type Database = {
           },
         ]
       }
+      itens_orcamento: {
+        Row: {
+          categoria_id: string | null
+          created_at: string
+          id: string
+          orcamento_id: string
+          preco_unitario: number
+          produto_id: string | null
+          produto_nome: string
+          quantidade: number
+          subtotal: number
+        }
+        Insert: {
+          categoria_id?: string | null
+          created_at?: string
+          id?: string
+          orcamento_id: string
+          preco_unitario?: number
+          produto_id?: string | null
+          produto_nome: string
+          quantidade?: number
+          subtotal?: number
+        }
+        Update: {
+          categoria_id?: string | null
+          created_at?: string
+          id?: string
+          orcamento_id?: string
+          preco_unitario?: number
+          produto_id?: string | null
+          produto_nome?: string
+          quantidade?: number
+          subtotal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itens_orcamento_orcamento_id_fkey"
+            columns: ["orcamento_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itens_orcamento_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itens_venda: {
         Row: {
           categoria_id: string | null
@@ -278,6 +377,69 @@ export type Database = {
           valor_meta?: number
         }
         Relationships: []
+      }
+      orcamentos: {
+        Row: {
+          atendente_id: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          created_at: string
+          data_orcamento: string
+          id: string
+          numero: number
+          observacoes: string | null
+          status: Database["public"]["Enums"]["status_orcamento"]
+          total: number
+          updated_at: string
+          validade: string | null
+          venda_convertida_id: string | null
+        }
+        Insert: {
+          atendente_id?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          data_orcamento?: string
+          id?: string
+          numero?: number
+          observacoes?: string | null
+          status?: Database["public"]["Enums"]["status_orcamento"]
+          total?: number
+          updated_at?: string
+          validade?: string | null
+          venda_convertida_id?: string | null
+        }
+        Update: {
+          atendente_id?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          data_orcamento?: string
+          id?: string
+          numero?: number
+          observacoes?: string | null
+          status?: Database["public"]["Enums"]["status_orcamento"]
+          total?: number
+          updated_at?: string
+          validade?: string | null
+          venda_convertida_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_venda_convertida_id_fkey"
+            columns: ["venda_convertida_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pagamentos_caderneta: {
         Row: {
@@ -487,6 +649,13 @@ export type Database = {
         | "cartao_debito"
         | "cartao_credito"
         | "caderneta"
+      status_conta_pagar: "pendente" | "paga" | "atrasada" | "cancelada"
+      status_orcamento:
+        | "rascunho"
+        | "enviado"
+        | "convertido"
+        | "cancelado"
+        | "expirado"
       status_venda: "paga" | "pendente" | "cancelada"
       tipo_movimento:
         | "entrada_venda"
@@ -629,6 +798,14 @@ export const Constants = {
         "cartao_debito",
         "cartao_credito",
         "caderneta",
+      ],
+      status_conta_pagar: ["pendente", "paga", "atrasada", "cancelada"],
+      status_orcamento: [
+        "rascunho",
+        "enviado",
+        "convertido",
+        "cancelado",
+        "expirado",
       ],
       status_venda: ["paga", "pendente", "cancelada"],
       tipo_movimento: [
