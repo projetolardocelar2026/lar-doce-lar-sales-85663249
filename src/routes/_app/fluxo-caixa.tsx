@@ -169,11 +169,11 @@ function FluxoCaixa() {
                 <div className="space-y-3">
                   <div>
                     <Label className="mb-1 block">Tipo</Label>
-                    <Select value={tipo} onValueChange={(v) => setTipo(v as any)}>
+                    <Select value={tipo} onValueChange={(v) => setTipo(v as "entrada_outras" | "saida_outras")}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="entrada_manual">Entrada</SelectItem>
-                        <SelectItem value="saida_manual">Saída</SelectItem>
+                        <SelectItem value="entrada_outras">Entrada</SelectItem>
+                        <SelectItem value="saida_outras">Saída</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
