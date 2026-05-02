@@ -217,8 +217,12 @@ function Relatorios() {
     return Array.from(map.values()).sort((a, b) => b.valor - a.valor);
   }, [produtos, categorias]);
 
+  const catNome = categoriaFiltro === "todas"
+    ? "Todas categorias"
+    : (categorias.find(c => c.id === categoriaFiltro)?.nome ?? "Categoria");
+
   const exportarCSV = () => {
-    downloadCSV(`relatorio-vendas-${inicio}-${fim}.csv`, vendas.map(v => ({
+    downloadCSV(`relatorio-vendas-${inicio}-${fim}.csv`, vendasFiltradas.map(v => ({
       Data: fmtDateOnly(v.data_venda),
       Total: Number(v.total).toFixed(2),
       Pagamento: formaPagamentoLabel[v.forma_pagamento] || v.forma_pagamento,
@@ -230,9 +234,9 @@ function Relatorios() {
     downloadTablePDF({
       filename: `relatorio-${inicio}-${fim}.pdf`,
       title: "Relatório de Vendas",
-      subtitle: `Período: ${fmtDateOnly(inicio)} a ${fmtDateOnly(fim)} • Faturamento total: ${brl(faturamento)} • ${vendas.length} vendas`,
+      subtitle: `Período: ${fmtDateOnly(inicio)} a ${fmtDateOnly(fim)} • Categoria: ${catNome} • Faturamento: ${brl(faturamento)} • ${vendasFiltradas.length} vendas`,
       headers: ["Data", "Cliente", "Pagamento", "Total"],
-      rows: vendas.map(v => [
+      rows: vendasFiltradas.map(v => [
         fmtDateOnly(v.data_venda),
         clientes.find(c => c.id === v.cliente_id)?.nome || "—",
         formaPagamentoLabel[v.forma_pagamento] || v.forma_pagamento,
@@ -259,9 +263,9 @@ function Relatorios() {
         }
       />
 
-      {/* Filtro período */}
+      {/* Filtro período + categoria */}
       <Card className="mb-6">
-        <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+        <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
           <div>
             <Label className="mb-1 block text-xs">Início</Label>
             <Input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} />
@@ -270,25 +274,44 @@ function Relatorios() {
             <Label className="mb-1 block text-xs">Fim</Label>
             <Input type="date" value={fim} onChange={(e) => setFim(e.target.value)} />
           </div>
+          <div>
+            <Label className="mb-1 block text-xs">Categoria</Label>
+            <Select value={categoriaFiltro} onValueChange={setCategoriaFiltro}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas categorias</SelectItem>
+                {categorias.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button onClick={carregar} disabled={loading}>
             {loading ? "Carregando…" : "Atualizar"}
           </Button>
         </CardContent>
       </Card>
 
+      {categoriaFiltro !== "todas" && (
+        <div className="mb-4 text-xs text-muted-foreground">
+          Filtrando por <Badge variant="secondary" className="ml-1">{catNome}</Badge>
+        </div>
+      )}
+
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <KPI label="Faturamento" value={brl(faturamento)} />
-        <KPI label="Vendas" value={String(vendas.length)} />
+        <KPI label="Vendas" value={String(vendasFiltradas.length)} />
         <KPI label="Ticket médio" value={brl(ticketMedio)} />
-        <KPI label="Itens vendidos" value={String(itens.reduce((s, i) => s + Number(i.quantidade), 0))} />
+        <KPI label="Itens vendidos" value={String(itensFiltrados.reduce((s, i) => s + Number(i.quantidade), 0))} />
       </div>
 
       <Tabs defaultValue="faturamento">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full">
           <TabsTrigger value="faturamento">Faturamento</TabsTrigger>
           <TabsTrigger value="pagamentos">Pagamentos</TabsTrigger>
           <TabsTrigger value="rankings">Rankings</TabsTrigger>
+          <TabsTrigger value="categorias">Por Categoria</TabsTrigger>
           <TabsTrigger value="estoque">Estoque</TabsTrigger>
         </TabsList>
 
