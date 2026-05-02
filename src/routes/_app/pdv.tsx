@@ -171,41 +171,82 @@ function PDVPage() {
 
     setSaving(true);
     try {
-      const { data: venda, error: vErr } = await supabase
-        .from("vendas")
-        .insert({
-          cliente_id: clienteId || null,
-          atendente_id: user?.id ?? null,
-          forma_pagamento: forma,
-          total,
-          observacoes: observacoes || null,
-          status: forma === "caderneta" ? "pendente" : "paga",
-          data_venda: new Date().toISOString(),
-        })
-        .select("id")
-        .single();
-      if (vErr || !venda) throw vErr ?? new Error("Falha ao criar venda");
+      const agora = new Date().toISOString();
+      let primeiraVendaId: string | null = null;
 
-      const itens = cart.map((i) => ({
-        venda_id: venda.id,
-        produto_id: i.produto_id,
-        produto_nome: i.nome,
-        categoria_id: i.categoria_id,
-        quantidade: i.quantidade,
-        preco_unitario: i.preco,
-        subtotal: i.preco * i.quantidade,
-      }));
-      const { error: iErr } = await supabase.from("itens_venda").insert(itens);
-      if (iErr) throw iErr;
+      if (forma === "caderneta") {
+        // Regra: cada produto/baixa vira uma venda separada no relatório diário,
+        // somando individualmente no saldo devedor (via trigger).
+        for (const i of cart) {
+          const subtotal = i.preco * i.quantidade;
+          const { data: venda, error: vErr } = await supabase
+            .from("vendas")
+            .insert({
+              cliente_id: clienteId || null,
+              atendente_id: user?.id ?? null,
+              forma_pagamento: "caderneta",
+              total: subtotal,
+              observacoes: observacoes || null,
+              status: "pendente",
+              data_venda: agora,
+            })
+            .select("id")
+            .single();
+          if (vErr || !venda) throw vErr ?? new Error("Falha ao criar venda");
+          primeiraVendaId ??= venda.id;
+          const { error: iErr } = await supabase.from("itens_venda").insert({
+            venda_id: venda.id,
+            produto_id: i.produto_id,
+            produto_nome: i.nome,
+            categoria_id: i.categoria_id,
+            quantidade: i.quantidade,
+            preco_unitario: i.preco,
+            subtotal,
+          });
+          if (iErr) throw iErr;
+        }
+      } else {
+        const { data: venda, error: vErr } = await supabase
+          .from("vendas")
+          .insert({
+            cliente_id: clienteId || null,
+            atendente_id: user?.id ?? null,
+            forma_pagamento: forma,
+            total,
+            observacoes: observacoes || null,
+            status: "paga",
+            data_venda: agora,
+          })
+          .select("id")
+          .single();
+        if (vErr || !venda) throw vErr ?? new Error("Falha ao criar venda");
+        primeiraVendaId = venda.id;
 
-      toast.success("Venda finalizada!");
+        const itens = cart.map((i) => ({
+          venda_id: venda.id,
+          produto_id: i.produto_id,
+          produto_nome: i.nome,
+          categoria_id: i.categoria_id,
+          quantidade: i.quantidade,
+          preco_unitario: i.preco,
+          subtotal: i.preco * i.quantidade,
+        }));
+        const { error: iErr } = await supabase.from("itens_venda").insert(itens);
+        if (iErr) throw iErr;
+      }
+
+      toast.success(
+        forma === "caderneta"
+          ? `Venda finalizada — ${cart.length} ${cart.length === 1 ? "lançamento" : "lançamentos"} na caderneta.`
+          : "Venda finalizada!",
+      );
 
       // Cupom digital se houver cliente cadastrado
-      if (cliente) {
+      if (cliente && primeiraVendaId) {
         const saldoAtualizado =
           forma === "caderneta" ? Number(cliente.saldo_devedor) + total : null;
         const texto = gerarTextoCupom({
-          vendaId: venda.id,
+          vendaId: primeiraVendaId,
           data: new Date(),
           clienteNome: cliente.nome,
           itens: cart.map((i) => ({ nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
@@ -216,7 +257,7 @@ function PDVPage() {
         });
         setCupomVenda({
           cliente: cliente as Cliente,
-          vendaId: venda.id,
+          vendaId: primeiraVendaId,
           texto,
           saldoAtualizado,
         });

@@ -16,6 +16,7 @@ import { Route as AppRelatoriosRouteImport } from './routes/_app/relatorios'
 import { Route as AppProdutosRouteImport } from './routes/_app/produtos'
 import { Route as AppPdvRouteImport } from './routes/_app/pdv'
 import { Route as AppOrcamentosRouteImport } from './routes/_app/orcamentos'
+import { Route as AppInadimplenciaRouteImport } from './routes/_app/inadimplencia'
 import { Route as AppFluxoCaixaRouteImport } from './routes/_app/fluxo-caixa'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppContasPagarRouteImport } from './routes/_app/contas-pagar'
@@ -55,6 +56,11 @@ const AppPdvRoute = AppPdvRouteImport.update({
 const AppOrcamentosRoute = AppOrcamentosRouteImport.update({
   id: '/orcamentos',
   path: '/orcamentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInadimplenciaRoute = AppInadimplenciaRouteImport.update({
+  id: '/inadimplencia',
+  path: '/inadimplencia',
   getParentRoute: () => AppRoute,
 } as any)
 const AppFluxoCaixaRoute = AppFluxoCaixaRouteImport.update({
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/contas-pagar': typeof AppContasPagarRoute
   '/dashboard': typeof AppDashboardRoute
   '/fluxo-caixa': typeof AppFluxoCaixaRoute
+  '/inadimplencia': typeof AppInadimplenciaRoute
   '/orcamentos': typeof AppOrcamentosRoute
   '/pdv': typeof AppPdvRoute
   '/produtos': typeof AppProdutosRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/contas-pagar': typeof AppContasPagarRoute
   '/dashboard': typeof AppDashboardRoute
   '/fluxo-caixa': typeof AppFluxoCaixaRoute
+  '/inadimplencia': typeof AppInadimplenciaRoute
   '/orcamentos': typeof AppOrcamentosRoute
   '/pdv': typeof AppPdvRoute
   '/produtos': typeof AppProdutosRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/_app/contas-pagar': typeof AppContasPagarRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/fluxo-caixa': typeof AppFluxoCaixaRoute
+  '/_app/inadimplencia': typeof AppInadimplenciaRoute
   '/_app/orcamentos': typeof AppOrcamentosRoute
   '/_app/pdv': typeof AppPdvRoute
   '/_app/produtos': typeof AppProdutosRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/contas-pagar'
     | '/dashboard'
     | '/fluxo-caixa'
+    | '/inadimplencia'
     | '/orcamentos'
     | '/pdv'
     | '/produtos'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/contas-pagar'
     | '/dashboard'
     | '/fluxo-caixa'
+    | '/inadimplencia'
     | '/orcamentos'
     | '/pdv'
     | '/produtos'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/_app/contas-pagar'
     | '/_app/dashboard'
     | '/_app/fluxo-caixa'
+    | '/_app/inadimplencia'
     | '/_app/orcamentos'
     | '/_app/pdv'
     | '/_app/produtos'
@@ -235,6 +247,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrcamentosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/inadimplencia': {
+      id: '/_app/inadimplencia'
+      path: '/inadimplencia'
+      fullPath: '/inadimplencia'
+      preLoaderRoute: typeof AppInadimplenciaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/fluxo-caixa': {
       id: '/_app/fluxo-caixa'
       path: '/fluxo-caixa'
@@ -287,6 +306,7 @@ interface AppRouteChildren {
   AppContasPagarRoute: typeof AppContasPagarRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppFluxoCaixaRoute: typeof AppFluxoCaixaRoute
+  AppInadimplenciaRoute: typeof AppInadimplenciaRoute
   AppOrcamentosRoute: typeof AppOrcamentosRoute
   AppPdvRoute: typeof AppPdvRoute
   AppProdutosRoute: typeof AppProdutosRoute
@@ -300,6 +320,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppContasPagarRoute: AppContasPagarRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppFluxoCaixaRoute: AppFluxoCaixaRoute,
+  AppInadimplenciaRoute: AppInadimplenciaRoute,
   AppOrcamentosRoute: AppOrcamentosRoute,
   AppPdvRoute: AppPdvRoute,
   AppProdutosRoute: AppProdutosRoute,
