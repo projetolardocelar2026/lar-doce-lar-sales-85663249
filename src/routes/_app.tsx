@@ -23,6 +23,7 @@ const NAV: NavItem[] = [
   { to: "/categorias", label: "Categorias", icon: Tags, adminOnly: true },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/caderneta", label: "Caderneta", icon: Notebook },
+  { to: "/inadimplencia", label: "Inadimplência", icon: AlertTriangle, adminOnly: true },
   { to: "/orcamentos", label: "Orçamentos", icon: FileText },
   { to: "/contas-pagar", label: "Contas a Pagar", icon: Receipt, adminOnly: true },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3, adminOnly: true },
