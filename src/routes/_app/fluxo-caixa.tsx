@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
-import { brl, fmtDate } from "@/lib/format";
+import { brl, fmtDate, fmtDateOnly, formaPagamentoLabel } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,9 @@ import {
 } from "recharts";
 import {
   ArrowDownCircle, ArrowUpCircle, Plus, Wallet, TrendingUp, TrendingDown,
-  FileSpreadsheet,
+  FileSpreadsheet, FileText, Eye,
 } from "lucide-react";
-import { downloadCSV } from "@/lib/exporters";
+import { downloadCSV, downloadTablePDF } from "@/lib/exporters";
 
 export const Route = createFileRoute("/_app/fluxo-caixa")({
   component: FluxoCaixa,
@@ -35,6 +35,9 @@ type Mov = {
   valor: number;
   descricao: string;
   data_movimento: string;
+  venda_id: string | null;
+  pagamento_id: string | null;
+  usuario_id: string | null;
 };
 
 const TIPO_LABEL: Record<string, string> = {
@@ -58,6 +61,7 @@ function FluxoCaixa() {
   const [movs, setMovs] = useState<Mov[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [detalhe, setDetalhe] = useState<Mov | null>(null);
 
   // Form lançamento manual
   const [tipo, setTipo] = useState<"entrada_outras" | "saida_outras">("entrada_outras");
@@ -72,7 +76,7 @@ function FluxoCaixa() {
     const fimISO = new Date(fim + "T23:59:59").toISOString();
     const { data: d, error } = await supabase
       .from("fluxo_caixa")
-      .select("id,tipo,valor,descricao,data_movimento")
+      .select("id,tipo,valor,descricao,data_movimento,venda_id,pagamento_id,usuario_id")
       .gte("data_movimento", ini)
       .lte("data_movimento", fimISO)
       .order("data_movimento", { ascending: false });
@@ -138,7 +142,7 @@ function FluxoCaixa() {
     } finally { setSalvando(false); }
   };
 
-  const exportar = () => {
+  const exportarCSV = () => {
     downloadCSV(`fluxo-caixa-${inicio}-${fim}.csv`, movs.map(m => ({
       Data: fmtDate(m.data_movimento),
       Tipo: TIPO_LABEL[m.tipo] || m.tipo,
@@ -148,6 +152,100 @@ function FluxoCaixa() {
     })));
   };
 
+  const exportarPDF = () => {
+    // Resumo por dia
+    const resumoRows = porDia.map(d => [
+      fmtDateOnly(d.data),
+      brl(d.entradas),
+      brl(d.saidas),
+      brl(d.entradas - d.saidas),
+    ]);
+    resumoRows.push([
+      "TOTAL", brl(totals.entradas), brl(totals.saidas), brl(totals.saldo),
+    ]);
+
+    const lancamentosRows = movs.map(m => [
+      fmtDate(m.data_movimento),
+      TIPO_LABEL[m.tipo] || m.tipo,
+      ehEntrada(m.tipo) ? "Entrada" : "Saída",
+      m.descricao,
+      `${ehEntrada(m.tipo) ? "+" : "−"} ${brl(Number(m.valor))}`,
+    ]);
+
+    // Gera 2 documentos consolidados em 1 PDF — usamos jspdf direto via helper
+    // (downloadTablePDF imprime UMA tabela). Para 2 tabelas, geramos manualmente.
+    import("jspdf").then(({ default: jsPDF }) => {
+      import("jspdf-autotable").then(({ default: autoTable }) => {
+        const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.setTextColor(15, 38, 76);
+        doc.text("Fluxo de Caixa", 14, 16);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(80);
+        doc.text(
+          `Período: ${fmtDateOnly(inicio)} a ${fmtDateOnly(fim)}`,
+          14, 22,
+        );
+        doc.text(
+          `Entradas: ${brl(totals.entradas)} • Saídas: ${brl(totals.saidas)} • Saldo: ${brl(totals.saldo)}`,
+          14, 27,
+        );
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(15, 38, 76);
+        doc.text("Resumo por dia", 14, 35);
+
+        autoTable(doc, {
+          head: [["Data", "Entradas", "Saídas", "Saldo"]],
+          body: resumoRows,
+          startY: 38,
+          styles: { fontSize: 9, cellPadding: 2 },
+          headStyles: { fillColor: [15, 38, 76], textColor: 255 },
+          alternateRowStyles: { fillColor: [240, 247, 255] },
+          didParseCell: (cell) => {
+            if (cell.row.index === resumoRows.length - 1) {
+              cell.cell.styles.fontStyle = "bold";
+              cell.cell.styles.fillColor = [220, 235, 250];
+            }
+          },
+        });
+
+        const finalY = (doc as any).lastAutoTable?.finalY ?? 50;
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(15, 38, 76);
+        doc.text(`Lançamentos (${movs.length})`, 14, finalY + 8);
+
+        autoTable(doc, {
+          head: [["Data/hora", "Tipo", "Natureza", "Descrição", "Valor"]],
+          body: lancamentosRows,
+          startY: finalY + 11,
+          styles: { fontSize: 8, cellPadding: 1.5 },
+          headStyles: { fillColor: [15, 38, 76], textColor: 255 },
+          alternateRowStyles: { fillColor: [240, 247, 255] },
+          columnStyles: { 4: { halign: "right" } },
+        });
+
+        const pages = doc.getNumberOfPages();
+        for (let i = 1; i <= pages; i++) {
+          doc.setPage(i);
+          doc.setFontSize(8);
+          doc.setTextColor(120);
+          doc.text(
+            `Lar Doce Lar — Fluxo de Caixa — pág. ${i}/${pages}`,
+            14, doc.internal.pageSize.getHeight() - 6,
+          );
+        }
+        doc.save(`fluxo-caixa-${inicio}-${fim}.pdf`);
+      });
+    });
+  };
+
   return (
     <div>
       <PageHeader
@@ -155,8 +253,11 @@ function FluxoCaixa() {
         description="Entradas e saídas do período"
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={exportar}>
+            <Button variant="outline" size="sm" onClick={exportarCSV}>
               <FileSpreadsheet className="h-4 w-4 mr-1.5" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportarPDF}>
+              <FileText className="h-4 w-4 mr-1.5" /> PDF
             </Button>
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
@@ -290,7 +391,11 @@ function FluxoCaixa() {
               {movs.map(m => {
                 const entrada = ehEntrada(m.tipo);
                 return (
-                  <div key={m.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors">
+                  <button
+                    key={m.id}
+                    onClick={() => setDetalhe(m)}
+                    className="w-full text-left flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/40 hover:bg-muted/70 transition-colors group"
+                  >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       {entrada
                         ? <ArrowUpCircle className="h-5 w-5 text-emerald-600 shrink-0" />
@@ -305,16 +410,266 @@ function FluxoCaixa() {
                         </div>
                       </div>
                     </div>
-                    <div className={`font-mono font-bold text-sm ${entrada ? "text-emerald-600" : "text-rose-600"}`}>
-                      {entrada ? "+" : "−"} {brl(Number(m.valor))}
+                    <div className="flex items-center gap-3">
+                      <div className={`font-mono font-bold text-sm ${entrada ? "text-emerald-600" : "text-rose-600"}`}>
+                        {entrada ? "+" : "−"} {brl(Number(m.valor))}
+                      </div>
+                      <Eye className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition" />
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <DetalheMovDialog mov={detalhe} movsDoDia={movs} onClose={() => setDetalhe(null)} />
     </div>
+  );
+}
+
+// ===== Modal de detalhes =====
+type Detalhes = {
+  venda?: {
+    id: string;
+    total: number;
+    forma_pagamento: string;
+    status: string;
+    cliente_nome: string | null;
+    observacoes: string | null;
+    itens: { produto_nome: string; quantidade: number; subtotal: number }[];
+  };
+  pagamento?: {
+    id: string;
+    valor: number;
+    forma_pagamento: string;
+    cliente_nome: string | null;
+    observacoes: string | null;
+  };
+  conta?: {
+    descricao: string;
+    fornecedor: string | null;
+    categoria: string | null;
+    vencimento: string;
+    status: string;
+  };
+};
+
+function DetalheMovDialog({
+  mov, movsDoDia, onClose,
+}: { mov: Mov | null; movsDoDia: Mov[]; onClose: () => void }) {
+  const [det, setDet] = useState<Detalhes>({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!mov) return;
+    setDet({});
+    setLoading(true);
+    (async () => {
+      const novo: Detalhes = {};
+      try {
+        if (mov.venda_id) {
+          const [{ data: v }, { data: it }] = await Promise.all([
+            supabase.from("vendas")
+              .select("id,total,forma_pagamento,status,observacoes,cliente_id")
+              .eq("id", mov.venda_id).maybeSingle(),
+            supabase.from("itens_venda")
+              .select("produto_nome,quantidade,subtotal")
+              .eq("venda_id", mov.venda_id),
+          ]);
+          if (v) {
+            let cliNome: string | null = null;
+            if ((v as any).cliente_id) {
+              const { data: c } = await supabase.from("clientes").select("nome").eq("id", (v as any).cliente_id).maybeSingle();
+              cliNome = c?.nome ?? null;
+            }
+            novo.venda = {
+              id: (v as any).id,
+              total: Number((v as any).total),
+              forma_pagamento: (v as any).forma_pagamento,
+              status: (v as any).status,
+              cliente_nome: cliNome,
+              observacoes: (v as any).observacoes,
+              itens: (it as any[]) || [],
+            };
+          }
+        }
+        if (mov.pagamento_id) {
+          const { data: p } = await supabase.from("pagamentos_caderneta")
+            .select("id,valor,forma_pagamento,observacoes,cliente_id")
+            .eq("id", mov.pagamento_id).maybeSingle();
+          if (p) {
+            let cliNome: string | null = null;
+            if ((p as any).cliente_id) {
+              const { data: c } = await supabase.from("clientes").select("nome").eq("id", (p as any).cliente_id).maybeSingle();
+              cliNome = c?.nome ?? null;
+            }
+            novo.pagamento = {
+              id: (p as any).id,
+              valor: Number((p as any).valor),
+              forma_pagamento: (p as any).forma_pagamento,
+              cliente_nome: cliNome,
+              observacoes: (p as any).observacoes,
+            };
+          }
+        }
+        if (mov.tipo === "saida_conta_pagar") {
+          // descrição: "Conta paga: <descricao> — <fornecedor>"
+          const desc = mov.descricao.replace(/^Conta paga:\s*/, "");
+          const [d0, forn] = desc.split(" — ");
+          const { data: cs } = await supabase.from("contas_pagar")
+            .select("descricao,fornecedor,categoria,vencimento,status")
+            .eq("descricao", d0.trim())
+            .order("data_pagamento", { ascending: false })
+            .limit(1);
+          const c = cs?.[0];
+          if (c) {
+            novo.conta = {
+              descricao: c.descricao,
+              fornecedor: c.fornecedor ?? forn ?? null,
+              categoria: c.categoria,
+              vencimento: c.vencimento,
+              status: c.status,
+            };
+          }
+        }
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setDet(novo);
+        setLoading(false);
+      }
+    })();
+  }, [mov]);
+
+  const histDoDia = useMemo(() => {
+    if (!mov) return { entradas: 0, saidas: 0, qtde: 0 };
+    const dia = new Date(mov.data_movimento).toISOString().slice(0, 10);
+    let e = 0, s = 0, q = 0;
+    movsDoDia.forEach(m => {
+      const d = new Date(m.data_movimento).toISOString().slice(0, 10);
+      if (d !== dia) return;
+      q++;
+      if (ehEntrada(m.tipo)) e += Number(m.valor);
+      else s += Number(m.valor);
+    });
+    return { entradas: e, saidas: s, qtde: q };
+  }, [mov, movsDoDia]);
+
+  if (!mov) return null;
+  const entrada = ehEntrada(mov.tipo);
+
+  return (
+    <Dialog open={!!mov} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {entrada
+              ? <ArrowUpCircle className="h-5 w-5 text-emerald-600" />
+              : <ArrowDownCircle className="h-5 w-5 text-rose-600" />}
+            Detalhes do lançamento
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-md bg-muted/50 p-3">
+            <div>
+              <div className="text-xs text-muted-foreground">{TIPO_LABEL[mov.tipo] || mov.tipo}</div>
+              <div className="font-medium">{mov.descricao}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{fmtDate(mov.data_movimento)}</div>
+            </div>
+            <div className={`font-mono font-bold text-lg ${entrada ? "text-emerald-600" : "text-rose-600"}`}>
+              {entrada ? "+" : "−"} {brl(Number(mov.valor))}
+            </div>
+          </div>
+
+          {loading && <div className="text-sm text-muted-foreground">Buscando referência…</div>}
+
+          {det.venda && (
+            <div className="rounded-md border p-3">
+              <div className="font-semibold text-sm mb-2">📦 Venda relacionada</div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div><span className="text-muted-foreground">ID:</span> {det.venda.id.slice(0, 8)}</div>
+                <div><span className="text-muted-foreground">Status:</span> <Badge variant="outline" className="text-[10px]">{det.venda.status}</Badge></div>
+                <div><span className="text-muted-foreground">Pagamento:</span> {formaPagamentoLabel[det.venda.forma_pagamento] || det.venda.forma_pagamento}</div>
+                <div><span className="text-muted-foreground">Cliente:</span> {det.venda.cliente_nome || "Avulso"}</div>
+              </div>
+              {det.venda.itens.length > 0 && (
+                <div className="mt-2 border-t pt-2">
+                  <div className="text-xs font-medium mb-1">Itens:</div>
+                  <ul className="text-xs space-y-0.5 max-h-32 overflow-y-auto">
+                    {det.venda.itens.map((i, idx) => (
+                      <li key={idx} className="flex justify-between">
+                        <span>{i.quantidade}× {i.produto_nome}</span>
+                        <span className="font-mono">{brl(Number(i.subtotal))}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {det.venda.observacoes && (
+                <div className="mt-2 text-xs text-muted-foreground italic">{det.venda.observacoes}</div>
+              )}
+            </div>
+          )}
+
+          {det.pagamento && (
+            <div className="rounded-md border p-3">
+              <div className="font-semibold text-sm mb-2">💵 Pagamento de caderneta</div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div><span className="text-muted-foreground">Cliente:</span> {det.pagamento.cliente_nome || "—"}</div>
+                <div><span className="text-muted-foreground">Forma:</span> {formaPagamentoLabel[det.pagamento.forma_pagamento] || det.pagamento.forma_pagamento}</div>
+                <div className="col-span-2"><span className="text-muted-foreground">Valor:</span> <strong>{brl(det.pagamento.valor)}</strong></div>
+              </div>
+              {det.pagamento.observacoes && (
+                <div className="mt-2 text-xs text-muted-foreground italic">{det.pagamento.observacoes}</div>
+              )}
+            </div>
+          )}
+
+          {det.conta && (
+            <div className="rounded-md border p-3">
+              <div className="font-semibold text-sm mb-2">📄 Conta paga</div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="col-span-2"><span className="text-muted-foreground">Descrição:</span> {det.conta.descricao}</div>
+                {det.conta.fornecedor && <div><span className="text-muted-foreground">Fornecedor:</span> {det.conta.fornecedor}</div>}
+                {det.conta.categoria && <div><span className="text-muted-foreground">Categoria:</span> {det.conta.categoria}</div>}
+                <div><span className="text-muted-foreground">Vencimento:</span> {fmtDateOnly(det.conta.vencimento)}</div>
+                <div><span className="text-muted-foreground">Status:</span> <Badge variant="outline" className="text-[10px]">{det.conta.status}</Badge></div>
+              </div>
+            </div>
+          )}
+
+          {!det.venda && !det.pagamento && !det.conta && !loading && (
+            <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+              Sem referência adicional — lançamento manual ou avulso.
+            </div>
+          )}
+
+          <div className="rounded-md bg-muted/40 p-3 text-xs">
+            <div className="font-medium mb-1">Histórico do dia ({fmtDateOnly(mov.data_movimento)})</div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <div className="text-muted-foreground">Lançamentos</div>
+                <div className="font-mono font-bold">{histDoDia.qtde}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Entradas</div>
+                <div className="font-mono font-bold text-emerald-600">{brl(histDoDia.entradas)}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Saídas</div>
+                <div className="font-mono font-bold text-rose-600">{brl(histDoDia.saidas)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
