@@ -38,10 +38,13 @@ type Item = {
   venda_id: string;
 };
 type Cliente = { id: string; nome: string };
-type Produto = { id: string; nome: string; estoque: number; estoque_minimo: number | null; ativo: boolean };
+type Produto = { id: string; nome: string; estoque: number; estoque_minimo: number | null; ativo: boolean; categoria_id: string | null; preco: number };
+type Categoria = { id: string; nome: string };
 
 function Relatorios() {
   const hoje = new Date();
+  const [categoriaFiltro, setCategoriaFiltro] = useState<string>("todas");
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [inicio, setInicio] = useState(() => {
     const d = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
     return d.toISOString().slice(0, 10);
