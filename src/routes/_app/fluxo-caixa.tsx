@@ -60,7 +60,7 @@ function FluxoCaixa() {
   const [open, setOpen] = useState(false);
 
   // Form lançamento manual
-  const [tipo, setTipo] = useState<"entrada_manual" | "saida_manual">("entrada_manual");
+  const [tipo, setTipo] = useState<"entrada_outras" | "saida_outras">("entrada_outras");
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
   const [data, setData] = useState(() => hoje.toISOString().slice(0, 10));
