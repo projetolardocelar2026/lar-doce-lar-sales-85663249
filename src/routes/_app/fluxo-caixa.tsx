@@ -41,8 +41,10 @@ const TIPO_LABEL: Record<string, string> = {
   entrada_venda: "Venda",
   entrada_pagamento_caderneta: "Pagto. Caderneta",
   saida_conta_pagar: "Conta Paga",
-  entrada_manual: "Entrada Manual",
-  saida_manual: "Saída Manual",
+  saida_fornecedor: "Fornecedor",
+  saida_despesa: "Despesa",
+  entrada_outras: "Entrada Manual",
+  saida_outras: "Saída Manual",
 };
 
 function ehEntrada(tipo: string) {
