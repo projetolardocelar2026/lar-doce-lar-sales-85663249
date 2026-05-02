@@ -423,6 +423,86 @@ function Relatorios() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="categorias" className="mt-4 grid md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-4 w-4" /> Faturamento por categoria
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {porCategoria.length === 0 ? (
+                <div className="text-muted-foreground text-sm py-4">Sem vendas no período.</div>
+              ) : (
+                <div className="space-y-1">
+                  {porCategoria.map((c, i) => {
+                    const pct = porCategoria[0].faturamento > 0 ? (c.faturamento / porCategoria[0].faturamento) * 100 : 0;
+                    return (
+                      <div key={c.nome + i} className="p-2 rounded-md bg-muted/40">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium">{c.nome}</span>
+                          <span className="font-mono font-bold text-primary">{brl(c.faturamento)}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-1">{c.qtd} unidades vendidas</div>
+                      </div>
+                    );
+                  })}
+                  <Button
+                    variant="outline" size="sm" className="mt-3 w-full"
+                    onClick={() => downloadCSV(`faturamento-categorias-${inicio}-${fim}.csv`,
+                      porCategoria.map(c => ({ Categoria: c.nome, Faturamento: c.faturamento.toFixed(2), Unidades: c.qtd })))}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" /> Exportar CSV
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-4 w-4" /> Estoque por categoria
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {estoquePorCategoria.length === 0 ? (
+                <div className="text-muted-foreground text-sm py-4">Sem produtos cadastrados.</div>
+              ) : (
+                <div className="space-y-1">
+                  {estoquePorCategoria.map((c, i) => (
+                    <div key={c.nome + i} className="p-2 rounded-md bg-muted/40">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{c.nome}</span>
+                        <span className="font-mono font-bold">{brl(c.valor)}</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                        <span>{c.itens} unidades em estoque</span>
+                        {c.criticos > 0 && (
+                          <Badge variant="destructive" className="text-[10px] py-0 h-4">
+                            {c.criticos} crítico(s)
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline" size="sm" className="mt-3 w-full"
+                    onClick={() => downloadCSV(`estoque-categorias.csv`,
+                      estoquePorCategoria.map(c => ({
+                        Categoria: c.nome, Unidades: c.itens, Valor: c.valor.toFixed(2), Criticos: c.criticos,
+                      })))}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" /> Exportar CSV
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="estoque" className="mt-4">
           <Card>
             <CardHeader>
