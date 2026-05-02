@@ -36,6 +36,7 @@ type Item = {
   quantidade: number;
   subtotal: number;
   venda_id: string;
+  categoria_id: string | null;
 };
 type Cliente = { id: string; nome: string };
 type Produto = { id: string; nome: string; estoque: number; estoque_minimo: number | null; ativo: boolean; categoria_id: string | null; preco: number };
@@ -62,23 +63,25 @@ function Relatorios() {
     const ini = new Date(inicio + "T00:00:00").toISOString();
     const fimISO = new Date(fim + "T23:59:59").toISOString();
 
-    const [{ data: v }, { data: c }, { data: p }] = await Promise.all([
+    const [{ data: v }, { data: c }, { data: p }, { data: cats }] = await Promise.all([
       supabase.from("vendas").select("id,total,forma_pagamento,data_venda,cliente_id,status")
         .gte("data_venda", ini).lte("data_venda", fimISO).neq("status", "cancelada")
         .order("data_venda", { ascending: false }),
       supabase.from("clientes").select("id,nome"),
-      supabase.from("produtos").select("id,nome,estoque,estoque_minimo,ativo"),
+      supabase.from("produtos").select("id,nome,estoque,estoque_minimo,ativo,categoria_id,preco"),
+      supabase.from("categorias").select("id,nome").eq("ativa", true).order("ordem"),
     ]);
     const vendasArr = (v as Venda[]) || [];
     setVendas(vendasArr);
     setClientes((c as Cliente[]) || []);
     setProdutos((p as Produto[]) || []);
+    setCategorias((cats as Categoria[]) || []);
 
     if (vendasArr.length > 0) {
       const ids = vendasArr.map(x => x.id);
       const { data: it } = await supabase
         .from("itens_venda")
-        .select("produto_id,produto_nome,quantidade,subtotal,venda_id")
+        .select("produto_id,produto_nome,quantidade,subtotal,venda_id,categoria_id")
         .in("venda_id", ids);
       setItens((it as Item[]) || []);
     } else {
