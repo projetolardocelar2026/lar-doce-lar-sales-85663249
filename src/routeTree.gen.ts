@@ -23,6 +23,7 @@ import { Route as AppContasPagarRouteImport } from './routes/_app/contas-pagar'
 import { Route as AppClientesRouteImport } from './routes/_app/clientes'
 import { Route as AppCategoriasRouteImport } from './routes/_app/categorias'
 import { Route as AppCadernetaRouteImport } from './routes/_app/caderneta'
+import { Route as AppVendasHistoricoRouteImport } from './routes/_app/vendas.historico'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -93,6 +94,11 @@ const AppCadernetaRoute = AppCadernetaRouteImport.update({
   path: '/caderneta',
   getParentRoute: () => AppRoute,
 } as any)
+const AppVendasHistoricoRoute = AppVendasHistoricoRouteImport.update({
+  id: '/vendas/historico',
+  path: '/vendas/historico',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/pdv': typeof AppPdvRoute
   '/produtos': typeof AppProdutosRoute
   '/relatorios': typeof AppRelatoriosRoute
+  '/vendas/historico': typeof AppVendasHistoricoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/pdv': typeof AppPdvRoute
   '/produtos': typeof AppProdutosRoute
   '/relatorios': typeof AppRelatoriosRoute
+  '/vendas/historico': typeof AppVendasHistoricoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/_app/pdv': typeof AppPdvRoute
   '/_app/produtos': typeof AppProdutosRoute
   '/_app/relatorios': typeof AppRelatoriosRoute
+  '/_app/vendas/historico': typeof AppVendasHistoricoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/pdv'
     | '/produtos'
     | '/relatorios'
+    | '/vendas/historico'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/pdv'
     | '/produtos'
     | '/relatorios'
+    | '/vendas/historico'
   id:
     | '__root__'
     | '/'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/_app/pdv'
     | '/_app/produtos'
     | '/_app/relatorios'
+    | '/_app/vendas/historico'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -296,6 +308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCadernetaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/vendas/historico': {
+      id: '/_app/vendas/historico'
+      path: '/vendas/historico'
+      fullPath: '/vendas/historico'
+      preLoaderRoute: typeof AppVendasHistoricoRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -311,6 +330,7 @@ interface AppRouteChildren {
   AppPdvRoute: typeof AppPdvRoute
   AppProdutosRoute: typeof AppProdutosRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
+  AppVendasHistoricoRoute: typeof AppVendasHistoricoRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -325,6 +345,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPdvRoute: AppPdvRoute,
   AppProdutosRoute: AppProdutosRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
+  AppVendasHistoricoRoute: AppVendasHistoricoRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
