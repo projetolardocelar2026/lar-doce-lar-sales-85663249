@@ -37,6 +37,7 @@ function Dashboard() {
   const [metaId, setMetaId] = useState<string | null>(null);
   const [faturado, setFaturado] = useState<number>(0);
   const [vendasMes, setVendasMes] = useState<number>(0);
+  const [estoqueBaixo, setEstoqueBaixo] = useState<{ id: string; nome: string; estoque: number; estoque_minimo: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMeta, setShowMeta] = useState(false);
   const [valorInput, setValorInput] = useState("");
