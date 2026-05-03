@@ -65,6 +65,10 @@ function Dashboard() {
     const list = (vendas as { total: number }[]) || [];
     setFaturado(list.reduce((s, v) => s + Number(v.total), 0));
     setVendasMes(list.length);
+    const baixos = ((prods as any[]) || [])
+      .filter((p) => p.estoque <= (p.estoque_minimo ?? 0))
+      .sort((a, b) => a.estoque - b.estoque);
+    setEstoqueBaixo(baixos);
     setLoading(false);
   };
 
