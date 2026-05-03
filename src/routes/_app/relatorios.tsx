@@ -307,12 +307,13 @@ function Relatorios() {
       </div>
 
       <Tabs defaultValue="faturamento">
-        <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full">
           <TabsTrigger value="faturamento">Faturamento</TabsTrigger>
           <TabsTrigger value="pagamentos">Pagamentos</TabsTrigger>
           <TabsTrigger value="rankings">Rankings</TabsTrigger>
           <TabsTrigger value="categorias">Por Categoria</TabsTrigger>
           <TabsTrigger value="estoque">Estoque</TabsTrigger>
+          <TabsTrigger value="comprar">Comprar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="faturamento" className="mt-4">
@@ -540,6 +541,60 @@ function Relatorios() {
                     })))}
                   >
                     <Download className="h-3.5 w-3.5 mr-1.5" /> Exportar lista
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="comprar" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                Produtos para Comprar ({estoqueBaixo.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {estoqueBaixo.length === 0 ? (
+                <div className="text-muted-foreground text-sm py-8 text-center">
+                  Tudo abastecido. ✓
+                </div>
+              ) : (
+                <div className="space-y-1 max-h-[500px] overflow-y-auto">
+                  {estoqueBaixo.map((p) => {
+                    const min = p.estoque_minimo ?? 0;
+                    const sugestao = Math.max(min * 2 - p.estoque, min || 1);
+                    return (
+                      <div key={p.id} className="flex items-center justify-between p-2 rounded-md bg-muted/40">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{p.nome}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Atual: {p.estoque} · Mínimo: {min}
+                          </div>
+                        </div>
+                        <Badge variant="default" className="ml-2">
+                          Comprar ~{sugestao}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 w-full"
+                    onClick={() => downloadCSV("produtos-para-comprar.csv", estoqueBaixo.map((p) => {
+                      const min = p.estoque_minimo ?? 0;
+                      return {
+                        Produto: p.nome,
+                        EstoqueAtual: p.estoque,
+                        Minimo: min,
+                        SugestaoCompra: Math.max(min * 2 - p.estoque, min || 1),
+                      };
+                    }))}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" /> Exportar lista para o fornecedor
                   </Button>
                 </div>
               )}

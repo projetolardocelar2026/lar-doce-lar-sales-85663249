@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  ShoppingCart, Package, Users, Notebook, Target, TrendingUp, Pencil, Trophy,
+  ShoppingCart, Package, Users, Notebook, Target, TrendingUp, Pencil, Trophy, AlertTriangle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/dashboard")({
@@ -37,6 +37,7 @@ function Dashboard() {
   const [metaId, setMetaId] = useState<string | null>(null);
   const [faturado, setFaturado] = useState<number>(0);
   const [vendasMes, setVendasMes] = useState<number>(0);
+  const [estoqueBaixo, setEstoqueBaixo] = useState<{ id: string; nome: string; estoque: number; estoque_minimo: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMeta, setShowMeta] = useState(false);
   const [valorInput, setValorInput] = useState("");
@@ -47,7 +48,7 @@ function Dashboard() {
     const inicio = new Date(ano, mes - 1, 1).toISOString();
     const fim = new Date(ano, mes, 1).toISOString();
 
-    const [{ data: m }, { data: vendas }] = await Promise.all([
+    const [{ data: m }, { data: vendas }, { data: prods }] = await Promise.all([
       supabase.from("metas").select("id,valor_meta").eq("ano", ano).eq("mes", mes).maybeSingle(),
       supabase
         .from("vendas")
@@ -55,6 +56,7 @@ function Dashboard() {
         .gte("data_venda", inicio)
         .lt("data_venda", fim)
         .neq("status", "cancelada"),
+      supabase.from("produtos").select("id,nome,estoque,estoque_minimo").eq("ativo", true),
     ]);
 
     setMeta(Number(m?.valor_meta ?? 0));
@@ -63,6 +65,10 @@ function Dashboard() {
     const list = (vendas as { total: number }[]) || [];
     setFaturado(list.reduce((s, v) => s + Number(v.total), 0));
     setVendasMes(list.length);
+    const baixos = ((prods as any[]) || [])
+      .filter((p) => p.estoque <= (p.estoque_minimo ?? 0))
+      .sort((a, b) => a.estoque - b.estoque);
+    setEstoqueBaixo(baixos);
     setLoading(false);
   };
 
@@ -184,6 +190,35 @@ function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Alerta de estoque mínimo */}
+      {estoqueBaixo.length > 0 && (
+        <Card className="mb-6 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-5 w-5" />
+              {estoqueBaixo.length} produto{estoqueBaixo.length > 1 ? "s" : ""} no estoque mínimo
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1 max-h-60 overflow-y-auto">
+              {estoqueBaixo.slice(0, 8).map((p) => (
+                <div key={p.id} className="flex items-center justify-between text-sm py-1">
+                  <span className="font-medium">{p.nome}</span>
+                  <Badge variant={p.estoque === 0 ? "destructive" : "secondary"}>
+                    {p.estoque} / mín {p.estoque_minimo ?? 0}
+                  </Badge>
+                </div>
+              ))}
+              {estoqueBaixo.length > 8 && (
+                <Link to="/relatorios" className="text-xs text-primary hover:underline block pt-2">
+                  Ver lista completa em Relatórios →
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Atalhos */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

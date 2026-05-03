@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 import {
   LayoutDashboard, ShoppingCart, Package, Tags, Users, Notebook,
-  BarChart3, Wallet, LogOut, Store, Menu, FileText, Receipt, AlertTriangle,
+  BarChart3, Wallet, LogOut, Store, Menu, FileText, Receipt, AlertTriangle, ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -17,7 +17,8 @@ export const Route = createFileRoute("/_app")({
 type NavItem = { to: string; label: string; icon: typeof Store; adminOnly?: boolean };
 
 const NAV: NavItem[] = [
-  { to: "/pdv", label: "PDV — Caixa", icon: ShoppingCart },
+  { to: "/pdv", label: "Vendas — Nova Venda", icon: ShoppingCart },
+  { to: "/vendas/historico", label: "Vendas — Histórico", icon: ClipboardList },
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/categorias", label: "Categorias", icon: Tags, adminOnly: true },

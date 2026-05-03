@@ -84,6 +84,9 @@ function PDVPage() {
     texto: string;
     saldoAtualizado: number | null;
   }>(null);
+  const [estoqueZero, setEstoqueZero] = useState<Produto | null>(null);
+  const [reposQtd, setReposQtd] = useState("");
+  const [repondo, setRepondo] = useState(false);
   const catalogoUrl = typeof window !== "undefined" ? `${window.location.origin}/` : "";
 
   const loadData = async () => {
@@ -115,19 +118,46 @@ function PDVPage() {
     [cart],
   );
 
-  const addToCart = (p: Produto) => {
-    if (p.estoque <= 0) { toast.error("Sem estoque"); return; }
+  const addToCart = (p: Produto, ignoreStock = false) => {
+    if (p.estoque <= 0 && !ignoreStock) {
+      setEstoqueZero(p);
+      setReposQtd("");
+      return;
+    }
     setCart((cur) => {
       const ex = cur.find((i) => i.produto_id === p.id);
       if (ex) {
-        if (ex.quantidade + 1 > p.estoque) { toast.error("Estoque insuficiente"); return cur; }
+        if (!ignoreStock && ex.quantidade + 1 > p.estoque) { toast.error("Estoque insuficiente"); return cur; }
         return cur.map((i) => i.produto_id === p.id ? { ...i, quantidade: i.quantidade + 1 } : i);
       }
       return [...cur, {
         produto_id: p.id, nome: p.nome, preco: Number(p.preco),
-        quantidade: 1, estoque: p.estoque, categoria_id: p.categoria_id,
+        quantidade: 1, estoque: ignoreStock ? Math.max(p.estoque, 9999) : p.estoque, categoria_id: p.categoria_id,
       }];
     });
+  };
+
+  const venderAssimMesmo = () => {
+    if (!estoqueZero) return;
+    addToCart(estoqueZero, true);
+    toast.warning("Estoque ficará negativo — ajuste depois em Produtos");
+    setEstoqueZero(null);
+  };
+
+  const abastecerAgora = async () => {
+    if (!estoqueZero) return;
+    const qtd = parseInt(reposQtd);
+    if (!qtd || qtd <= 0) { toast.error("Informe a quantidade recebida"); return; }
+    setRepondo(true);
+    const novoEstoque = estoqueZero.estoque + qtd;
+    const { error } = await supabase.from("produtos").update({ estoque: novoEstoque }).eq("id", estoqueZero.id);
+    setRepondo(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Abastecido: +${qtd} un.`);
+    const atualizado = { ...estoqueZero, estoque: novoEstoque };
+    setProdutos((cur) => cur.map((p) => p.id === atualizado.id ? atualizado : p));
+    addToCart(atualizado);
+    setEstoqueZero(null);
   };
 
   const changeQty = (id: string, delta: number) => {
@@ -413,8 +443,7 @@ function PDVPage() {
                 <button
                   key={p.id}
                   onClick={() => addToCart(p)}
-                  disabled={p.estoque <= 0}
-                  className="text-left bg-card border border-border rounded-xl overflow-hidden hover:border-brand-sky transition shadow-sm disabled:opacity-50"
+                  className="text-left bg-card border border-border rounded-xl overflow-hidden hover:border-brand-sky transition shadow-sm"
                 >
                   <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
                     {p.imagem_url ? (
@@ -696,6 +725,41 @@ function PDVPage() {
               Enviar via WhatsApp
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Estoque zerado */}
+      <Dialog open={!!estoqueZero} onOpenChange={(o) => !o && setEstoqueZero(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" /> Produto sem estoque
+            </DialogTitle>
+          </DialogHeader>
+          {estoqueZero && (
+            <div className="space-y-3">
+              <p className="text-sm">
+                <strong>{estoqueZero.nome}</strong> está com estoque zerado.
+              </p>
+              <div className="rounded-md border p-3 space-y-2">
+                <Label className="text-sm">Abastecer agora (qtd. recebida):</Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={reposQtd}
+                  onChange={(e) => setReposQtd(e.target.value)}
+                  placeholder="Ex: 10"
+                />
+                <Button onClick={abastecerAgora} disabled={repondo} className="w-full" variant="success">
+                  {repondo ? "Abastecendo…" : "Abastecer e vender"}
+                </Button>
+              </div>
+              <div className="text-xs text-center text-muted-foreground">— ou —</div>
+              <Button onClick={venderAssimMesmo} variant="outline" className="w-full">
+                Vender assim mesmo (estoque ficará negativo)
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
