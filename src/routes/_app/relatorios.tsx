@@ -307,12 +307,13 @@ function Relatorios() {
       </div>
 
       <Tabs defaultValue="faturamento">
-        <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full">
           <TabsTrigger value="faturamento">Faturamento</TabsTrigger>
           <TabsTrigger value="pagamentos">Pagamentos</TabsTrigger>
           <TabsTrigger value="rankings">Rankings</TabsTrigger>
           <TabsTrigger value="categorias">Por Categoria</TabsTrigger>
           <TabsTrigger value="estoque">Estoque</TabsTrigger>
+          <TabsTrigger value="comprar">Comprar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="faturamento" className="mt-4">
