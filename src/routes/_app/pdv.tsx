@@ -727,6 +727,41 @@ function PDVPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Estoque zerado */}
+      <Dialog open={!!estoqueZero} onOpenChange={(o) => !o && setEstoqueZero(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" /> Produto sem estoque
+            </DialogTitle>
+          </DialogHeader>
+          {estoqueZero && (
+            <div className="space-y-3">
+              <p className="text-sm">
+                <strong>{estoqueZero.nome}</strong> está com estoque zerado.
+              </p>
+              <div className="rounded-md border p-3 space-y-2">
+                <Label className="text-sm">Abastecer agora (qtd. recebida):</Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={reposQtd}
+                  onChange={(e) => setReposQtd(e.target.value)}
+                  placeholder="Ex: 10"
+                />
+                <Button onClick={abastecerAgora} disabled={repondo} className="w-full" variant="success">
+                  {repondo ? "Abastecendo…" : "Abastecer e vender"}
+                </Button>
+              </div>
+              <div className="text-xs text-center text-muted-foreground">— ou —</div>
+              <Button onClick={venderAssimMesmo} variant="outline" className="w-full">
+                Vender assim mesmo (estoque ficará negativo)
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
