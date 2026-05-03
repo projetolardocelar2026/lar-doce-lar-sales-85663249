@@ -632,6 +632,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancelar_venda: { Args: { _venda_id: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
