@@ -191,6 +191,35 @@ function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Alerta de estoque mínimo */}
+      {estoqueBaixo.length > 0 && (
+        <Card className="mb-6 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-5 w-5" />
+              {estoqueBaixo.length} produto{estoqueBaixo.length > 1 ? "s" : ""} no estoque mínimo
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1 max-h-60 overflow-y-auto">
+              {estoqueBaixo.slice(0, 8).map((p) => (
+                <div key={p.id} className="flex items-center justify-between text-sm py-1">
+                  <span className="font-medium">{p.nome}</span>
+                  <Badge variant={p.estoque === 0 ? "destructive" : "secondary"}>
+                    {p.estoque} / mín {p.estoque_minimo ?? 0}
+                  </Badge>
+                </div>
+              ))}
+              {estoqueBaixo.length > 8 && (
+                <Link to="/relatorios" className="text-xs text-primary hover:underline block pt-2">
+                  Ver lista completa em Relatórios →
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Atalhos */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {cards.map((c) => {
