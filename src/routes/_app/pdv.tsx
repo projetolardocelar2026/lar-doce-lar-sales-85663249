@@ -118,19 +118,46 @@ function PDVPage() {
     [cart],
   );
 
-  const addToCart = (p: Produto) => {
-    if (p.estoque <= 0) { toast.error("Sem estoque"); return; }
+  const addToCart = (p: Produto, ignoreStock = false) => {
+    if (p.estoque <= 0 && !ignoreStock) {
+      setEstoqueZero(p);
+      setReposQtd("");
+      return;
+    }
     setCart((cur) => {
       const ex = cur.find((i) => i.produto_id === p.id);
       if (ex) {
-        if (ex.quantidade + 1 > p.estoque) { toast.error("Estoque insuficiente"); return cur; }
+        if (!ignoreStock && ex.quantidade + 1 > p.estoque) { toast.error("Estoque insuficiente"); return cur; }
         return cur.map((i) => i.produto_id === p.id ? { ...i, quantidade: i.quantidade + 1 } : i);
       }
       return [...cur, {
         produto_id: p.id, nome: p.nome, preco: Number(p.preco),
-        quantidade: 1, estoque: p.estoque, categoria_id: p.categoria_id,
+        quantidade: 1, estoque: ignoreStock ? Math.max(p.estoque, 9999) : p.estoque, categoria_id: p.categoria_id,
       }];
     });
+  };
+
+  const venderAssimMesmo = () => {
+    if (!estoqueZero) return;
+    addToCart(estoqueZero, true);
+    toast.warning("Estoque ficará negativo — ajuste depois em Produtos");
+    setEstoqueZero(null);
+  };
+
+  const abastecerAgora = async () => {
+    if (!estoqueZero) return;
+    const qtd = parseInt(reposQtd);
+    if (!qtd || qtd <= 0) { toast.error("Informe a quantidade recebida"); return; }
+    setRepondo(true);
+    const novoEstoque = estoqueZero.estoque + qtd;
+    const { error } = await supabase.from("produtos").update({ estoque: novoEstoque }).eq("id", estoqueZero.id);
+    setRepondo(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Abastecido: +${qtd} un.`);
+    const atualizado = { ...estoqueZero, estoque: novoEstoque };
+    setProdutos((cur) => cur.map((p) => p.id === atualizado.id ? atualizado : p));
+    addToCart(atualizado);
+    setEstoqueZero(null);
   };
 
   const changeQty = (id: string, delta: number) => {
