@@ -18,7 +18,7 @@ type NavItem = { to: string; label: string; icon: typeof Store; adminOnly?: bool
 
 const NAV: NavItem[] = [
   { to: "/pdv", label: "Vendas — Nova Venda", icon: ShoppingCart },
-  { to: "/vendas/historico", label: "Vendas — Histórico", icon: Receipt },
+  { to: "/vendas/historico", label: "Vendas — Histórico", icon: ClipboardList },
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/categorias", label: "Categorias", icon: Tags, adminOnly: true },
