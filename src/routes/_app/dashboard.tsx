@@ -48,7 +48,7 @@ function Dashboard() {
     const inicio = new Date(ano, mes - 1, 1).toISOString();
     const fim = new Date(ano, mes, 1).toISOString();
 
-    const [{ data: m }, { data: vendas }] = await Promise.all([
+    const [{ data: m }, { data: vendas }, { data: prods }] = await Promise.all([
       supabase.from("metas").select("id,valor_meta").eq("ano", ano).eq("mes", mes).maybeSingle(),
       supabase
         .from("vendas")
@@ -56,6 +56,7 @@ function Dashboard() {
         .gte("data_venda", inicio)
         .lt("data_venda", fim)
         .neq("status", "cancelada"),
+      supabase.from("produtos").select("id,nome,estoque,estoque_minimo").eq("ativo", true),
     ]);
 
     setMeta(Number(m?.valor_meta ?? 0));
