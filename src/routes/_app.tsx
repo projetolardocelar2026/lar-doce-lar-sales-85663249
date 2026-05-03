@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 import {
   LayoutDashboard, ShoppingCart, Package, Tags, Users, Notebook,
-  BarChart3, Wallet, LogOut, Store, Menu, FileText, Receipt, AlertTriangle,
+  BarChart3, Wallet, LogOut, Store, Menu, FileText, Receipt, AlertTriangle, ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
