@@ -84,6 +84,9 @@ function PDVPage() {
     texto: string;
     saldoAtualizado: number | null;
   }>(null);
+  const [estoqueZero, setEstoqueZero] = useState<Produto | null>(null);
+  const [reposQtd, setReposQtd] = useState("");
+  const [repondo, setRepondo] = useState(false);
   const catalogoUrl = typeof window !== "undefined" ? `${window.location.origin}/` : "";
 
   const loadData = async () => {
