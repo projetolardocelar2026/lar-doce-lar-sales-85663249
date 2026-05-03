@@ -443,8 +443,7 @@ function PDVPage() {
                 <button
                   key={p.id}
                   onClick={() => addToCart(p)}
-                  disabled={p.estoque <= 0}
-                  className="text-left bg-card border border-border rounded-xl overflow-hidden hover:border-brand-sky transition shadow-sm disabled:opacity-50"
+                  className="text-left bg-card border border-border rounded-xl overflow-hidden hover:border-brand-sky transition shadow-sm"
                 >
                   <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
                     {p.imagem_url ? (
