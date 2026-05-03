@@ -17,7 +17,8 @@ export const Route = createFileRoute("/_app")({
 type NavItem = { to: string; label: string; icon: typeof Store; adminOnly?: boolean };
 
 const NAV: NavItem[] = [
-  { to: "/pdv", label: "PDV — Caixa", icon: ShoppingCart },
+  { to: "/pdv", label: "Vendas — Nova Venda", icon: ShoppingCart },
+  { to: "/vendas/historico", label: "Vendas — Histórico", icon: Receipt },
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/categorias", label: "Categorias", icon: Tags, adminOnly: true },
