@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  ShoppingCart, Package, Users, Notebook, Target, TrendingUp, Pencil, Trophy,
+  ShoppingCart, Package, Users, Notebook, Target, TrendingUp, Pencil, Trophy, AlertTriangle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/dashboard")({
