@@ -665,6 +665,10 @@ export type Database = {
         | "saida_despesa"
         | "entrada_outras"
         | "saida_outras"
+        | "entrada_suprimento"
+        | "saida_sangria"
+        | "entrada_troco_inicial"
+        | "saida_credito_garrafas"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -816,6 +820,10 @@ export const Constants = {
         "saida_despesa",
         "entrada_outras",
         "saida_outras",
+        "entrada_suprimento",
+        "saida_sangria",
+        "entrada_troco_inicial",
+        "saida_credito_garrafas",
       ],
     },
   },
