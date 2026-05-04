@@ -38,7 +38,7 @@ type Produto = {
   ativo: boolean;
 };
 type Categoria = { id: string; nome: string };
-type Cliente = { id: string; nome: string; telefone: string | null; saldo_devedor: number; limite_caderneta: number };
+type Cliente = { id: string; nome: string; telefone: string | null; saldo_devedor: number; limite_caderneta: number; saldo_credito: number };
 type CartItem = {
   produto_id: string;
   nome: string;
@@ -48,6 +48,7 @@ type CartItem = {
   categoria_id: string | null;
 };
 type Forma = "dinheiro" | "pix" | "cartao_debito" | "cartao_credito" | "caderneta";
+type SplitPag = { forma: Forma; valor: number };
 
 const FORMAS: { value: Forma; label: string; icon: typeof Banknote }[] = [
   { value: "dinheiro", label: "Dinheiro", icon: Banknote },
