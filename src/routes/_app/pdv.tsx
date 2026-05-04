@@ -200,10 +200,13 @@ function PDVPage() {
   const removeItem = (id: string) =>
     setCart((cur) => cur.filter((i) => i.produto_id !== id));
 
-  const clearCart = () => { setCart([]); setClienteId(""); setObservacoes(""); setValorRecebido(""); };
+  const clearCart = () => {
+    setCart([]); setClienteId(""); setObservacoes(""); setValorRecebido("");
+    setDescontoStr(""); setTaxaStr(""); setUsarCreditoStr(""); setSplits([]);
+  };
 
   const cliente = clientes.find((c) => c.id === clienteId);
-  const troco = forma === "dinheiro" && valorRecebido
+  const troco = forma === "dinheiro" && valorRecebido && splits.length === 0
     ? Math.max(0, parseFloat(valorRecebido.replace(",", ".")) - total)
     : 0;
 
@@ -212,110 +215,115 @@ function PDVPage() {
     setShowCheckout(true);
   };
 
+  const addSplit = () => {
+    const v = parseFloat((splitValor || "0").replace(",", ".")) || 0;
+    if (v <= 0) return toast.error("Informe valor");
+    if (splitsTotal + v > total + 0.001) return toast.error("Excede o total");
+    setSplits((cur) => [...cur, { forma: splitForma, valor: v }]);
+    setSplitValor("");
+  };
+  const removeSplit = (idx: number) => setSplits((cur) => cur.filter((_, i) => i !== idx));
+
   const finalizar = async () => {
     if (cart.length === 0) return;
-    if (forma === "caderneta" && !clienteId) {
-      toast.error("Selecione o cliente para venda na caderneta");
-      return;
+    if (creditoUsado > 0 && !cliente) return toast.error("Selecione cliente para usar crédito");
+    if (creditoUsado > 0 && cliente && creditoUsado > Number(cliente.saldo_credito)) {
+      return toast.error("Crédito insuficiente do cliente");
     }
-    if (forma === "caderneta" && cliente) {
-      const novoSaldo = Number(cliente.saldo_devedor) + total;
-      if (cliente.limite_caderneta > 0 && novoSaldo > Number(cliente.limite_caderneta)) {
-        toast.error(`Limite excedido. Saldo ficaria em ${brl(novoSaldo)}`);
-        return;
+    const usandoSplit = splits.length > 0;
+    if (usandoSplit && Math.abs(splitsTotal - total) > 0.01) {
+      return toast.error(`Pagamentos somam ${brl(splitsTotal)} mas total é ${brl(total)}`);
+    }
+    const formasUsadas: Forma[] = usandoSplit ? splits.map((s) => s.forma) : [forma];
+    const usaCaderneta = formasUsadas.includes("caderneta");
+    if (usaCaderneta && !clienteId) return toast.error("Selecione cliente para caderneta");
+    const valorCaderneta = usandoSplit ? splits.filter((s) => s.forma === "caderneta").reduce((a, s) => a + s.valor, 0) : (forma === "caderneta" ? total : 0);
+    if (usaCaderneta && cliente && Number(cliente.limite_caderneta) > 0) {
+      const novoSaldo = Number(cliente.saldo_devedor) + valorCaderneta;
+      if (novoSaldo > Number(cliente.limite_caderneta)) {
+        return toast.error(`Limite excedido. Saldo ficaria em ${brl(novoSaldo)}`);
       }
     }
 
     setSaving(true);
     try {
       const agora = new Date().toISOString();
-      let primeiraVendaId: string | null = null;
+      const formaPrincipal: Forma = usandoSplit
+        ? (splits.find((s) => s.forma !== "caderneta")?.forma || splits[0].forma)
+        : forma;
+      const statusVenda = (formaPrincipal === "caderneta" && !usandoSplit) ? "pendente" : "paga";
 
-      if (forma === "caderneta") {
-        // Regra: cada produto/baixa vira uma venda separada no relatório diário,
-        // somando individualmente no saldo devedor (via trigger).
-        for (const i of cart) {
-          const subtotal = i.preco * i.quantidade;
-          const { data: venda, error: vErr } = await supabase
-            .from("vendas")
-            .insert({
-              cliente_id: clienteId || null,
-              atendente_id: user?.id ?? null,
-              forma_pagamento: "caderneta",
-              total: subtotal,
-              observacoes: observacoes || null,
-              status: "pendente",
-              data_venda: agora,
-            })
-            .select("id")
-            .single();
-          if (vErr || !venda) throw vErr ?? new Error("Falha ao criar venda");
-          primeiraVendaId ??= venda.id;
-          const { error: iErr } = await supabase.from("itens_venda").insert({
-            venda_id: venda.id,
-            produto_id: i.produto_id,
-            produto_nome: i.nome,
-            categoria_id: i.categoria_id,
-            quantidade: i.quantidade,
-            preco_unitario: i.preco,
-            subtotal,
-          });
-          if (iErr) throw iErr;
-        }
-      } else {
-        const { data: venda, error: vErr } = await supabase
-          .from("vendas")
-          .insert({
-            cliente_id: clienteId || null,
-            atendente_id: user?.id ?? null,
-            forma_pagamento: forma,
-            total,
-            observacoes: observacoes || null,
-            status: "paga",
-            data_venda: agora,
-          })
-          .select("id")
-          .single();
-        if (vErr || !venda) throw vErr ?? new Error("Falha ao criar venda");
-        primeiraVendaId = venda.id;
-
-        const itens = cart.map((i) => ({
-          venda_id: venda.id,
-          produto_id: i.produto_id,
-          produto_nome: i.nome,
-          categoria_id: i.categoria_id,
-          quantidade: i.quantidade,
-          preco_unitario: i.preco,
-          subtotal: i.preco * i.quantidade,
-        }));
-        const { error: iErr } = await supabase.from("itens_venda").insert(itens);
-        if (iErr) throw iErr;
+      // Debita crédito do cliente antes (se houver)
+      if (creditoUsado > 0 && cliente) {
+        const { error: cErr } = await supabase.rpc("usar_credito_cliente", {
+          _cliente: cliente.id, _valor: creditoUsado,
+        });
+        if (cErr) throw cErr;
       }
 
-      toast.success(
-        forma === "caderneta"
-          ? `Venda finalizada — ${cart.length} ${cart.length === 1 ? "lançamento" : "lançamentos"} na caderneta.`
-          : "Venda finalizada!",
-      );
+      const { data: venda, error: vErr } = await supabase
+        .from("vendas")
+        .insert({
+          cliente_id: clienteId || null,
+          atendente_id: user?.id ?? null,
+          forma_pagamento: formaPrincipal,
+          total,
+          desconto: descontoNum,
+          taxa: taxaNum,
+          credito_usado: creditoUsado,
+          sessao_caixa_id: sessaoCaixaId,
+          observacoes: observacoes || null,
+          status: statusVenda,
+          data_venda: agora,
+        })
+        .select("id")
+        .single();
+      if (vErr || !venda) throw vErr ?? new Error("Falha ao criar venda");
 
-      // Cupom digital se houver cliente cadastrado
-      if (cliente && primeiraVendaId) {
-        const saldoAtualizado =
-          forma === "caderneta" ? Number(cliente.saldo_devedor) + total : null;
+      const itens = cart.map((i) => ({
+        venda_id: venda.id,
+        produto_id: i.produto_id,
+        produto_nome: i.nome,
+        categoria_id: i.categoria_id,
+        quantidade: i.quantidade,
+        preco_unitario: i.preco,
+        subtotal: i.preco * i.quantidade,
+      }));
+      const { error: iErr } = await supabase.from("itens_venda").insert(itens);
+      if (iErr) throw iErr;
+
+      if (usandoSplit) {
+        const pgs = splits.map((s) => ({ venda_id: venda.id, forma_pagamento: s.forma, valor: s.valor }));
+        const { error: pErr } = await supabase.from("pagamentos_venda").insert(pgs);
+        if (pErr) throw pErr;
+      }
+
+      toast.success("Venda finalizada!");
+
+      if (cliente) {
+        const saldoAtualizado = usaCaderneta ? Number(cliente.saldo_devedor) + valorCaderneta : null;
+        const splitTxt = usandoSplit
+          ? splits.map((s) => `${formaPagamentoLabel[s.forma] ?? s.forma}: ${brl(s.valor)}`).join(" • ")
+          : (formaPagamentoLabel[forma] ?? forma);
+        const extras: string[] = [];
+        if (descontoNum > 0) extras.push(`Desconto: −${brl(descontoNum)}`);
+        if (taxaNum > 0) extras.push(`Taxa: +${brl(taxaNum)}`);
+        if (creditoUsado > 0) extras.push(`Crédito usado: −${brl(creditoUsado)}`);
+        const obsExtra = extras.length ? `\n${extras.join(" | ")}` : "";
         const texto = gerarTextoCupom({
-          vendaId: primeiraVendaId,
+          vendaId: venda.id,
           data: new Date(),
           clienteNome: cliente.nome,
           itens: cart.map((i) => ({ nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
           total,
-          formaPagamento: forma,
+          formaPagamento: splitTxt,
           saldoCadernetaAtualizado: saldoAtualizado,
           catalogoUrl,
         });
         setCupomVenda({
           cliente: cliente as Cliente,
-          vendaId: primeiraVendaId,
-          texto,
+          vendaId: venda.id,
+          texto: texto + obsExtra,
           saldoAtualizado,
         });
       }
