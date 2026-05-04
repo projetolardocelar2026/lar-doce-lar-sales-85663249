@@ -125,10 +125,25 @@ function PDVPage() {
     });
   }, [produtos, search, catFilter]);
 
-  const total = useMemo(
+  const subtotal = useMemo(
     () => cart.reduce((s, i) => s + i.preco * i.quantidade, 0),
     [cart],
   );
+  const descontoNum = useMemo(() => {
+    const v = parseFloat((descontoStr || "0").replace(",", ".")) || 0;
+    if (descontoPct) return Math.min(subtotal, subtotal * (v / 100));
+    return Math.min(subtotal, v);
+  }, [descontoStr, descontoPct, subtotal]);
+  const taxaNum = parseFloat((taxaStr || "0").replace(",", ".")) || 0;
+  const creditoUsado = useMemo(() => {
+    const v = parseFloat((usarCreditoStr || "0").replace(",", ".")) || 0;
+    return Math.max(0, v);
+  }, [usarCreditoStr]);
+  const total = useMemo(
+    () => Math.max(0, subtotal - descontoNum + taxaNum - creditoUsado),
+    [subtotal, descontoNum, taxaNum, creditoUsado],
+  );
+  const splitsTotal = useMemo(() => splits.reduce((s, p) => s + p.valor, 0), [splits]);
 
   const addToCart = (p: Produto, ignoreStock = false) => {
     if (p.estoque <= 0 && !ignoreStock) {
