@@ -14,6 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      caixa_movimentos: {
+        Row: {
+          created_at: string
+          id: string
+          motivo: string | null
+          operador_id: string
+          sessao_id: string
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          operador_id: string
+          sessao_id: string
+          tipo: string
+          valor: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          operador_id?: string
+          sessao_id?: string
+          tipo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caixa_movimentos_sessao_id_fkey"
+            columns: ["sessao_id"]
+            isOneToOne: false
+            referencedRelation: "caixa_sessoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      caixa_sessoes: {
+        Row: {
+          aberto_em: string
+          created_at: string
+          diferenca: number | null
+          fechado_em: string | null
+          id: string
+          observacoes: string | null
+          operador_id: string
+          status: string
+          troco_inicial: number
+          valor_contado: number | null
+          valor_esperado: number | null
+        }
+        Insert: {
+          aberto_em?: string
+          created_at?: string
+          diferenca?: number | null
+          fechado_em?: string | null
+          id?: string
+          observacoes?: string | null
+          operador_id: string
+          status?: string
+          troco_inicial?: number
+          valor_contado?: number | null
+          valor_esperado?: number | null
+        }
+        Update: {
+          aberto_em?: string
+          created_at?: string
+          diferenca?: number | null
+          fechado_em?: string | null
+          id?: string
+          observacoes?: string | null
+          operador_id?: string
+          status?: string
+          troco_inicial?: number
+          valor_contado?: number | null
+          valor_esperado?: number | null
+        }
+        Relationships: []
+      }
       categorias: {
         Row: {
           ativa: boolean
@@ -55,6 +135,7 @@ export type Database = {
           nome: string
           observacao_relacionamento: string | null
           observacoes: string | null
+          saldo_credito: number
           saldo_devedor: number
           telefone: string | null
           updated_at: string
@@ -72,6 +153,7 @@ export type Database = {
           nome: string
           observacao_relacionamento?: string | null
           observacoes?: string | null
+          saldo_credito?: number
           saldo_devedor?: number
           telefone?: string | null
           updated_at?: string
@@ -89,6 +171,7 @@ export type Database = {
           nome?: string
           observacao_relacionamento?: string | null
           observacoes?: string | null
+          saldo_credito?: number
           saldo_devedor?: number
           telefone?: string | null
           updated_at?: string
@@ -238,6 +321,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      garrafas_retornadas: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          id: string
+          observacoes: string | null
+          operador_id: string | null
+          quantidade: number
+          valor_credito: number
+          valor_unitario: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          id?: string
+          observacoes?: string | null
+          operador_id?: string | null
+          quantidade: number
+          valor_credito: number
+          valor_unitario?: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          id?: string
+          observacoes?: string | null
+          operador_id?: string | null
+          quantidade?: number
+          valor_credito?: number
+          valor_unitario?: number
+        }
+        Relationships: []
       }
       itens_orcamento: {
         Row: {
@@ -482,6 +598,30 @@ export type Database = {
           },
         ]
       }
+      pagamentos_venda: {
+        Row: {
+          created_at: string
+          forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
+          id: string
+          valor: number
+          venda_id: string
+        }
+        Insert: {
+          created_at?: string
+          forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
+          id?: string
+          valor: number
+          venda_id: string
+        }
+        Update: {
+          created_at?: string
+          forma_pagamento?: Database["public"]["Enums"]["forma_pagamento"]
+          id?: string
+          valor?: number
+          venda_id?: string
+        }
+        Relationships: []
+      }
       produtos: {
         Row: {
           ativo: boolean
@@ -588,33 +728,45 @@ export type Database = {
           atendente_id: string | null
           cliente_id: string | null
           created_at: string
+          credito_usado: number
           data_venda: string
+          desconto: number
           forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
           id: string
           observacoes: string | null
+          sessao_caixa_id: string | null
           status: Database["public"]["Enums"]["status_venda"]
+          taxa: number
           total: number
         }
         Insert: {
           atendente_id?: string | null
           cliente_id?: string | null
           created_at?: string
+          credito_usado?: number
           data_venda?: string
+          desconto?: number
           forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
           observacoes?: string | null
+          sessao_caixa_id?: string | null
           status?: Database["public"]["Enums"]["status_venda"]
+          taxa?: number
           total?: number
         }
         Update: {
           atendente_id?: string | null
           cliente_id?: string | null
           created_at?: string
+          credito_usado?: number
           data_venda?: string
+          desconto?: number
           forma_pagamento?: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
           observacoes?: string | null
+          sessao_caixa_id?: string | null
           status?: Database["public"]["Enums"]["status_venda"]
+          taxa?: number
           total?: number
         }
         Relationships: [
@@ -632,7 +784,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      abrir_caixa: { Args: { _troco: number }; Returns: string }
       cancelar_venda: { Args: { _venda_id: string }; Returns: undefined }
+      fechar_caixa: {
+        Args: { _obs?: string; _sessao: string; _valor_contado: number }
+        Returns: {
+          aberto_em: string
+          created_at: string
+          diferenca: number | null
+          fechado_em: string | null
+          id: string
+          observacoes: string | null
+          operador_id: string
+          status: string
+          troco_inicial: number
+          valor_contado: number | null
+          valor_esperado: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "caixa_sessoes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -641,6 +816,28 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      registrar_caixa_movimento: {
+        Args: {
+          _motivo: string
+          _sessao: string
+          _tipo: string
+          _valor: number
+        }
+        Returns: string
+      }
+      registrar_garrafas: {
+        Args: {
+          _cliente: string
+          _obs?: string
+          _qtd: number
+          _valor_unit?: number
+        }
+        Returns: number
+      }
+      usar_credito_cliente: {
+        Args: { _cliente: string; _valor: number }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "atendente"
