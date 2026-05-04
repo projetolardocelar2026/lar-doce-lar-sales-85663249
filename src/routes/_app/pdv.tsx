@@ -38,7 +38,7 @@ type Produto = {
   ativo: boolean;
 };
 type Categoria = { id: string; nome: string };
-type Cliente = { id: string; nome: string; telefone: string | null; saldo_devedor: number; limite_caderneta: number };
+type Cliente = { id: string; nome: string; telefone: string | null; saldo_devedor: number; limite_caderneta: number; saldo_credito: number };
 type CartItem = {
   produto_id: string;
   nome: string;
@@ -48,6 +48,7 @@ type CartItem = {
   categoria_id: string | null;
 };
 type Forma = "dinheiro" | "pix" | "cartao_debito" | "cartao_credito" | "caderneta";
+type SplitPag = { forma: Forma; valor: number };
 
 const FORMAS: { value: Forma; label: string; icon: typeof Banknote }[] = [
   { value: "dinheiro", label: "Dinheiro", icon: Banknote },
@@ -78,6 +79,15 @@ function PDVPage() {
   const [novoCliErr, setNovoCliErr] = useState<{ nome?: string; telefone?: string; documento?: string }>({});
   const [savingCli, setSavingCli] = useState(false);
   const [aberturaCaixa] = useState<Date>(() => new Date());
+  const [sessaoCaixaId, setSessaoCaixaId] = useState<string | null>(null);
+  const [descontoStr, setDescontoStr] = useState("");
+  const [descontoPct, setDescontoPct] = useState(false);
+  const [taxaStr, setTaxaStr] = useState("");
+  const [usarCreditoStr, setUsarCreditoStr] = useState("");
+  const [splits, setSplits] = useState<SplitPag[]>([]);
+  const [showSplit, setShowSplit] = useState(false);
+  const [splitForma, setSplitForma] = useState<Forma>("dinheiro");
+  const [splitValor, setSplitValor] = useState("");
   const [cupomVenda, setCupomVenda] = useState<null | {
     cliente: Cliente;
     vendaId: string;
@@ -91,18 +101,20 @@ function PDVPage() {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: p }, { data: c }, { data: cl }] = await Promise.all([
+    const [{ data: p }, { data: c }, { data: cl }, { data: sess }] = await Promise.all([
       supabase.from("produtos").select("id,nome,preco,estoque,imagem_url,categoria_id,ativo").eq("ativo", true).order("nome"),
       supabase.from("categorias").select("id,nome").eq("ativa", true).order("ordem"),
-      supabase.from("clientes").select("id,nome,telefone,saldo_devedor,limite_caderneta").eq("ativo", true).order("nome"),
+      supabase.from("clientes").select("id,nome,telefone,saldo_devedor,limite_caderneta,saldo_credito").eq("ativo", true).order("nome"),
+      user ? supabase.from("caixa_sessoes").select("id").eq("operador_id", user.id).eq("status", "aberta").maybeSingle() : Promise.resolve({ data: null } as any),
     ]);
     setProdutos((p as Produto[]) || []);
     setCategorias((c as Categoria[]) || []);
     setClientes((cl as Cliente[]) || []);
+    setSessaoCaixaId((sess as any)?.id || null);
     setLoading(false);
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [user]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -113,10 +125,25 @@ function PDVPage() {
     });
   }, [produtos, search, catFilter]);
 
-  const total = useMemo(
+  const subtotal = useMemo(
     () => cart.reduce((s, i) => s + i.preco * i.quantidade, 0),
     [cart],
   );
+  const descontoNum = useMemo(() => {
+    const v = parseFloat((descontoStr || "0").replace(",", ".")) || 0;
+    if (descontoPct) return Math.min(subtotal, subtotal * (v / 100));
+    return Math.min(subtotal, v);
+  }, [descontoStr, descontoPct, subtotal]);
+  const taxaNum = parseFloat((taxaStr || "0").replace(",", ".")) || 0;
+  const creditoUsado = useMemo(() => {
+    const v = parseFloat((usarCreditoStr || "0").replace(",", ".")) || 0;
+    return Math.max(0, v);
+  }, [usarCreditoStr]);
+  const total = useMemo(
+    () => Math.max(0, subtotal - descontoNum + taxaNum - creditoUsado),
+    [subtotal, descontoNum, taxaNum, creditoUsado],
+  );
+  const splitsTotal = useMemo(() => splits.reduce((s, p) => s + p.valor, 0), [splits]);
 
   const addToCart = (p: Produto, ignoreStock = false) => {
     if (p.estoque <= 0 && !ignoreStock) {
@@ -173,10 +200,13 @@ function PDVPage() {
   const removeItem = (id: string) =>
     setCart((cur) => cur.filter((i) => i.produto_id !== id));
 
-  const clearCart = () => { setCart([]); setClienteId(""); setObservacoes(""); setValorRecebido(""); };
+  const clearCart = () => {
+    setCart([]); setClienteId(""); setObservacoes(""); setValorRecebido("");
+    setDescontoStr(""); setTaxaStr(""); setUsarCreditoStr(""); setSplits([]);
+  };
 
   const cliente = clientes.find((c) => c.id === clienteId);
-  const troco = forma === "dinheiro" && valorRecebido
+  const troco = forma === "dinheiro" && valorRecebido && splits.length === 0
     ? Math.max(0, parseFloat(valorRecebido.replace(",", ".")) - total)
     : 0;
 
@@ -185,110 +215,115 @@ function PDVPage() {
     setShowCheckout(true);
   };
 
+  const addSplit = () => {
+    const v = parseFloat((splitValor || "0").replace(",", ".")) || 0;
+    if (v <= 0) return toast.error("Informe valor");
+    if (splitsTotal + v > total + 0.001) return toast.error("Excede o total");
+    setSplits((cur) => [...cur, { forma: splitForma, valor: v }]);
+    setSplitValor("");
+  };
+  const removeSplit = (idx: number) => setSplits((cur) => cur.filter((_, i) => i !== idx));
+
   const finalizar = async () => {
     if (cart.length === 0) return;
-    if (forma === "caderneta" && !clienteId) {
-      toast.error("Selecione o cliente para venda na caderneta");
-      return;
+    if (creditoUsado > 0 && !cliente) return toast.error("Selecione cliente para usar crédito");
+    if (creditoUsado > 0 && cliente && creditoUsado > Number(cliente.saldo_credito)) {
+      return toast.error("Crédito insuficiente do cliente");
     }
-    if (forma === "caderneta" && cliente) {
-      const novoSaldo = Number(cliente.saldo_devedor) + total;
-      if (cliente.limite_caderneta > 0 && novoSaldo > Number(cliente.limite_caderneta)) {
-        toast.error(`Limite excedido. Saldo ficaria em ${brl(novoSaldo)}`);
-        return;
+    const usandoSplit = splits.length > 0;
+    if (usandoSplit && Math.abs(splitsTotal - total) > 0.01) {
+      return toast.error(`Pagamentos somam ${brl(splitsTotal)} mas total é ${brl(total)}`);
+    }
+    const formasUsadas: Forma[] = usandoSplit ? splits.map((s) => s.forma) : [forma];
+    const usaCaderneta = formasUsadas.includes("caderneta");
+    if (usaCaderneta && !clienteId) return toast.error("Selecione cliente para caderneta");
+    const valorCaderneta = usandoSplit ? splits.filter((s) => s.forma === "caderneta").reduce((a, s) => a + s.valor, 0) : (forma === "caderneta" ? total : 0);
+    if (usaCaderneta && cliente && Number(cliente.limite_caderneta) > 0) {
+      const novoSaldo = Number(cliente.saldo_devedor) + valorCaderneta;
+      if (novoSaldo > Number(cliente.limite_caderneta)) {
+        return toast.error(`Limite excedido. Saldo ficaria em ${brl(novoSaldo)}`);
       }
     }
 
     setSaving(true);
     try {
       const agora = new Date().toISOString();
-      let primeiraVendaId: string | null = null;
+      const formaPrincipal: Forma = usandoSplit
+        ? (splits.find((s) => s.forma !== "caderneta")?.forma || splits[0].forma)
+        : forma;
+      const statusVenda = (formaPrincipal === "caderneta" && !usandoSplit) ? "pendente" : "paga";
 
-      if (forma === "caderneta") {
-        // Regra: cada produto/baixa vira uma venda separada no relatório diário,
-        // somando individualmente no saldo devedor (via trigger).
-        for (const i of cart) {
-          const subtotal = i.preco * i.quantidade;
-          const { data: venda, error: vErr } = await supabase
-            .from("vendas")
-            .insert({
-              cliente_id: clienteId || null,
-              atendente_id: user?.id ?? null,
-              forma_pagamento: "caderneta",
-              total: subtotal,
-              observacoes: observacoes || null,
-              status: "pendente",
-              data_venda: agora,
-            })
-            .select("id")
-            .single();
-          if (vErr || !venda) throw vErr ?? new Error("Falha ao criar venda");
-          primeiraVendaId ??= venda.id;
-          const { error: iErr } = await supabase.from("itens_venda").insert({
-            venda_id: venda.id,
-            produto_id: i.produto_id,
-            produto_nome: i.nome,
-            categoria_id: i.categoria_id,
-            quantidade: i.quantidade,
-            preco_unitario: i.preco,
-            subtotal,
-          });
-          if (iErr) throw iErr;
-        }
-      } else {
-        const { data: venda, error: vErr } = await supabase
-          .from("vendas")
-          .insert({
-            cliente_id: clienteId || null,
-            atendente_id: user?.id ?? null,
-            forma_pagamento: forma,
-            total,
-            observacoes: observacoes || null,
-            status: "paga",
-            data_venda: agora,
-          })
-          .select("id")
-          .single();
-        if (vErr || !venda) throw vErr ?? new Error("Falha ao criar venda");
-        primeiraVendaId = venda.id;
-
-        const itens = cart.map((i) => ({
-          venda_id: venda.id,
-          produto_id: i.produto_id,
-          produto_nome: i.nome,
-          categoria_id: i.categoria_id,
-          quantidade: i.quantidade,
-          preco_unitario: i.preco,
-          subtotal: i.preco * i.quantidade,
-        }));
-        const { error: iErr } = await supabase.from("itens_venda").insert(itens);
-        if (iErr) throw iErr;
+      // Debita crédito do cliente antes (se houver)
+      if (creditoUsado > 0 && cliente) {
+        const { error: cErr } = await supabase.rpc("usar_credito_cliente", {
+          _cliente: cliente.id, _valor: creditoUsado,
+        });
+        if (cErr) throw cErr;
       }
 
-      toast.success(
-        forma === "caderneta"
-          ? `Venda finalizada — ${cart.length} ${cart.length === 1 ? "lançamento" : "lançamentos"} na caderneta.`
-          : "Venda finalizada!",
-      );
+      const { data: venda, error: vErr } = await supabase
+        .from("vendas")
+        .insert({
+          cliente_id: clienteId || null,
+          atendente_id: user?.id ?? null,
+          forma_pagamento: formaPrincipal,
+          total,
+          desconto: descontoNum,
+          taxa: taxaNum,
+          credito_usado: creditoUsado,
+          sessao_caixa_id: sessaoCaixaId,
+          observacoes: observacoes || null,
+          status: statusVenda,
+          data_venda: agora,
+        })
+        .select("id")
+        .single();
+      if (vErr || !venda) throw vErr ?? new Error("Falha ao criar venda");
 
-      // Cupom digital se houver cliente cadastrado
-      if (cliente && primeiraVendaId) {
-        const saldoAtualizado =
-          forma === "caderneta" ? Number(cliente.saldo_devedor) + total : null;
+      const itens = cart.map((i) => ({
+        venda_id: venda.id,
+        produto_id: i.produto_id,
+        produto_nome: i.nome,
+        categoria_id: i.categoria_id,
+        quantidade: i.quantidade,
+        preco_unitario: i.preco,
+        subtotal: i.preco * i.quantidade,
+      }));
+      const { error: iErr } = await supabase.from("itens_venda").insert(itens);
+      if (iErr) throw iErr;
+
+      if (usandoSplit) {
+        const pgs = splits.map((s) => ({ venda_id: venda.id, forma_pagamento: s.forma, valor: s.valor }));
+        const { error: pErr } = await supabase.from("pagamentos_venda").insert(pgs);
+        if (pErr) throw pErr;
+      }
+
+      toast.success("Venda finalizada!");
+
+      if (cliente) {
+        const saldoAtualizado = usaCaderneta ? Number(cliente.saldo_devedor) + valorCaderneta : null;
+        const splitTxt = usandoSplit
+          ? splits.map((s) => `${formaPagamentoLabel[s.forma] ?? s.forma}: ${brl(s.valor)}`).join(" • ")
+          : (formaPagamentoLabel[forma] ?? forma);
+        const extras: string[] = [];
+        if (descontoNum > 0) extras.push(`Desconto: −${brl(descontoNum)}`);
+        if (taxaNum > 0) extras.push(`Taxa: +${brl(taxaNum)}`);
+        if (creditoUsado > 0) extras.push(`Crédito usado: −${brl(creditoUsado)}`);
+        const obsExtra = extras.length ? `\n${extras.join(" | ")}` : "";
         const texto = gerarTextoCupom({
-          vendaId: primeiraVendaId,
+          vendaId: venda.id,
           data: new Date(),
           clienteNome: cliente.nome,
           itens: cart.map((i) => ({ nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
           total,
-          formaPagamento: forma,
+          formaPagamento: splitTxt,
           saldoCadernetaAtualizado: saldoAtualizado,
           catalogoUrl,
         });
         setCupomVenda({
           cliente: cliente as Cliente,
-          vendaId: primeiraVendaId,
-          texto,
+          vendaId: venda.id,
+          texto: texto + obsExtra,
           saldoAtualizado,
         });
       }
@@ -505,34 +540,94 @@ function PDVPage() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="bg-muted rounded-lg p-4 flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Total</span>
-              <span className="text-2xl font-bold text-primary">{brl(total)}</span>
+            {!sessaoCaixaId && (
+              <div className="rounded-md bg-amber-100 text-amber-900 text-xs p-2 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4"/> Nenhum caixa aberto. Abra o caixa para conferência precisa do dinheiro.
+              </div>
+            )}
+            <div className="bg-muted rounded-lg p-3 space-y-1 text-sm">
+              <div className="flex justify-between"><span>Subtotal</span><span>{brl(subtotal)}</span></div>
+              {descontoNum > 0 && <div className="flex justify-between text-success"><span>Desconto</span><span>−{brl(descontoNum)}</span></div>}
+              {taxaNum > 0 && <div className="flex justify-between"><span>Taxa</span><span>+{brl(taxaNum)}</span></div>}
+              {creditoUsado > 0 && <div className="flex justify-between text-success"><span>Crédito do cliente</span><span>−{brl(creditoUsado)}</span></div>}
+              <div className="border-t pt-1 flex items-center justify-between">
+                <span className="text-muted-foreground">Total</span>
+                <span className="text-2xl font-bold text-primary">{brl(total)}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label className="text-xs">Desconto</Label>
+                <div className="flex gap-1">
+                  <Input value={descontoStr} onChange={(e) => setDescontoStr(e.target.value)} placeholder="0,00"/>
+                  <Button type="button" size="sm" variant={descontoPct ? "default" : "outline"} onClick={() => setDescontoPct((v) => !v)}>{descontoPct ? "%" : "R$"}</Button>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Taxa/Entrega</Label>
+                <Input value={taxaStr} onChange={(e) => setTaxaStr(e.target.value)} placeholder="0,00"/>
+              </div>
+              <div>
+                <Label className="text-xs">Usar crédito</Label>
+                <Input value={usarCreditoStr} onChange={(e) => setUsarCreditoStr(e.target.value)} placeholder="0,00" disabled={!cliente || Number(cliente?.saldo_credito || 0) <= 0}/>
+                {cliente && Number(cliente.saldo_credito) > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Disp.: {brl(cliente.saldo_credito)}</p>
+                )}
+              </div>
             </div>
 
             <div>
-              <Label className="mb-2 block">Forma de pagamento</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {FORMAS.map((f) => {
-                  const Icon = f.icon;
-                  const active = forma === f.value;
-                  return (
-                    <button
-                      key={f.value}
-                      type="button"
-                      onClick={() => setForma(f.value)}
-                      className={`p-3 border rounded-lg flex items-center gap-2 text-sm transition ${
-                        active
-                          ? "border-primary bg-primary/10 text-primary font-medium"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {f.label}
-                    </button>
-                  );
-                })}
+              <div className="flex items-center justify-between mb-2">
+                <Label>Forma de pagamento</Label>
+                <Button type="button" size="sm" variant={splits.length > 0 ? "default" : "outline"} className="h-7 text-xs"
+                  onClick={() => setShowSplit((v) => !v)}>
+                  {splits.length > 0 ? `Pagto. misto (${splits.length})` : "Pagto. misto"}
+                </Button>
               </div>
+              {splits.length === 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {FORMAS.map((f) => {
+                    const Icon = f.icon;
+                    const active = forma === f.value;
+                    return (
+                      <button key={f.value} type="button" onClick={() => setForma(f.value)}
+                        className={`p-3 border rounded-lg flex items-center gap-2 text-sm transition ${active ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50"}`}>
+                        <Icon className="h-4 w-4" />{f.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {splits.map((s, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-muted/40 rounded p-2 text-sm">
+                      <span>{formaPagamentoLabel[s.forma] ?? s.forma}</span>
+                      <div className="flex items-center gap-2">
+                        <strong>{brl(s.valor)}</strong>
+                        <button onClick={() => removeSplit(idx)} className="text-destructive"><X className="h-3 w-3"/></button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="text-xs text-muted-foreground flex justify-between">
+                    <span>Pago: {brl(splitsTotal)}</span><span>Falta: {brl(Math.max(0, total - splitsTotal))}</span>
+                  </div>
+                </div>
+              )}
+              {showSplit && (
+                <div className="mt-2 p-2 border rounded space-y-2">
+                  <div className="flex gap-2">
+                    <Select value={splitForma} onValueChange={(v) => setSplitForma(v as Forma)}>
+                      <SelectTrigger className="flex-1"><SelectValue/></SelectTrigger>
+                      <SelectContent>
+                        {FORMAS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Input className="w-28" placeholder="Valor" value={splitValor} onChange={(e) => setSplitValor(e.target.value)}/>
+                    <Button type="button" onClick={addSplit}><Plus className="h-4 w-4"/></Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

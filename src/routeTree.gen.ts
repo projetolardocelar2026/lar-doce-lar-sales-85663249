@@ -17,11 +17,13 @@ import { Route as AppProdutosRouteImport } from './routes/_app/produtos'
 import { Route as AppPdvRouteImport } from './routes/_app/pdv'
 import { Route as AppOrcamentosRouteImport } from './routes/_app/orcamentos'
 import { Route as AppInadimplenciaRouteImport } from './routes/_app/inadimplencia'
+import { Route as AppGarrafasRouteImport } from './routes/_app/garrafas'
 import { Route as AppFluxoCaixaRouteImport } from './routes/_app/fluxo-caixa'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppContasPagarRouteImport } from './routes/_app/contas-pagar'
 import { Route as AppClientesRouteImport } from './routes/_app/clientes'
 import { Route as AppCategoriasRouteImport } from './routes/_app/categorias'
+import { Route as AppCaixaRouteImport } from './routes/_app/caixa'
 import { Route as AppCadernetaRouteImport } from './routes/_app/caderneta'
 import { Route as AppVendasHistoricoRouteImport } from './routes/_app/vendas.historico'
 
@@ -64,6 +66,11 @@ const AppInadimplenciaRoute = AppInadimplenciaRouteImport.update({
   path: '/inadimplencia',
   getParentRoute: () => AppRoute,
 } as any)
+const AppGarrafasRoute = AppGarrafasRouteImport.update({
+  id: '/garrafas',
+  path: '/garrafas',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFluxoCaixaRoute = AppFluxoCaixaRouteImport.update({
   id: '/fluxo-caixa',
   path: '/fluxo-caixa',
@@ -89,6 +96,11 @@ const AppCategoriasRoute = AppCategoriasRouteImport.update({
   path: '/categorias',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCaixaRoute = AppCaixaRouteImport.update({
+  id: '/caixa',
+  path: '/caixa',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCadernetaRoute = AppCadernetaRouteImport.update({
   id: '/caderneta',
   path: '/caderneta',
@@ -104,11 +116,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/caderneta': typeof AppCadernetaRoute
+  '/caixa': typeof AppCaixaRoute
   '/categorias': typeof AppCategoriasRoute
   '/clientes': typeof AppClientesRoute
   '/contas-pagar': typeof AppContasPagarRoute
   '/dashboard': typeof AppDashboardRoute
   '/fluxo-caixa': typeof AppFluxoCaixaRoute
+  '/garrafas': typeof AppGarrafasRoute
   '/inadimplencia': typeof AppInadimplenciaRoute
   '/orcamentos': typeof AppOrcamentosRoute
   '/pdv': typeof AppPdvRoute
@@ -120,11 +134,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/caderneta': typeof AppCadernetaRoute
+  '/caixa': typeof AppCaixaRoute
   '/categorias': typeof AppCategoriasRoute
   '/clientes': typeof AppClientesRoute
   '/contas-pagar': typeof AppContasPagarRoute
   '/dashboard': typeof AppDashboardRoute
   '/fluxo-caixa': typeof AppFluxoCaixaRoute
+  '/garrafas': typeof AppGarrafasRoute
   '/inadimplencia': typeof AppInadimplenciaRoute
   '/orcamentos': typeof AppOrcamentosRoute
   '/pdv': typeof AppPdvRoute
@@ -138,11 +154,13 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/caderneta': typeof AppCadernetaRoute
+  '/_app/caixa': typeof AppCaixaRoute
   '/_app/categorias': typeof AppCategoriasRoute
   '/_app/clientes': typeof AppClientesRoute
   '/_app/contas-pagar': typeof AppContasPagarRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/fluxo-caixa': typeof AppFluxoCaixaRoute
+  '/_app/garrafas': typeof AppGarrafasRoute
   '/_app/inadimplencia': typeof AppInadimplenciaRoute
   '/_app/orcamentos': typeof AppOrcamentosRoute
   '/_app/pdv': typeof AppPdvRoute
@@ -156,11 +174,13 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/caderneta'
+    | '/caixa'
     | '/categorias'
     | '/clientes'
     | '/contas-pagar'
     | '/dashboard'
     | '/fluxo-caixa'
+    | '/garrafas'
     | '/inadimplencia'
     | '/orcamentos'
     | '/pdv'
@@ -172,11 +192,13 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/caderneta'
+    | '/caixa'
     | '/categorias'
     | '/clientes'
     | '/contas-pagar'
     | '/dashboard'
     | '/fluxo-caixa'
+    | '/garrafas'
     | '/inadimplencia'
     | '/orcamentos'
     | '/pdv'
@@ -189,11 +211,13 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/caderneta'
+    | '/_app/caixa'
     | '/_app/categorias'
     | '/_app/clientes'
     | '/_app/contas-pagar'
     | '/_app/dashboard'
     | '/_app/fluxo-caixa'
+    | '/_app/garrafas'
     | '/_app/inadimplencia'
     | '/_app/orcamentos'
     | '/_app/pdv'
@@ -266,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInadimplenciaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/garrafas': {
+      id: '/_app/garrafas'
+      path: '/garrafas'
+      fullPath: '/garrafas'
+      preLoaderRoute: typeof AppGarrafasRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/fluxo-caixa': {
       id: '/_app/fluxo-caixa'
       path: '/fluxo-caixa'
@@ -301,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCategoriasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/caixa': {
+      id: '/_app/caixa'
+      path: '/caixa'
+      fullPath: '/caixa'
+      preLoaderRoute: typeof AppCaixaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/caderneta': {
       id: '/_app/caderneta'
       path: '/caderneta'
@@ -320,11 +358,13 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppCadernetaRoute: typeof AppCadernetaRoute
+  AppCaixaRoute: typeof AppCaixaRoute
   AppCategoriasRoute: typeof AppCategoriasRoute
   AppClientesRoute: typeof AppClientesRoute
   AppContasPagarRoute: typeof AppContasPagarRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppFluxoCaixaRoute: typeof AppFluxoCaixaRoute
+  AppGarrafasRoute: typeof AppGarrafasRoute
   AppInadimplenciaRoute: typeof AppInadimplenciaRoute
   AppOrcamentosRoute: typeof AppOrcamentosRoute
   AppPdvRoute: typeof AppPdvRoute
@@ -335,11 +375,13 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppCadernetaRoute: AppCadernetaRoute,
+  AppCaixaRoute: AppCaixaRoute,
   AppCategoriasRoute: AppCategoriasRoute,
   AppClientesRoute: AppClientesRoute,
   AppContasPagarRoute: AppContasPagarRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppFluxoCaixaRoute: AppFluxoCaixaRoute,
+  AppGarrafasRoute: AppGarrafasRoute,
   AppInadimplenciaRoute: AppInadimplenciaRoute,
   AppOrcamentosRoute: AppOrcamentosRoute,
   AppPdvRoute: AppPdvRoute,
