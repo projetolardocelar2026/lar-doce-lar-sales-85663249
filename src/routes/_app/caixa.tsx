@@ -132,7 +132,7 @@ function CaixaPage() {
     if (!sessao) return;
     const v = parseFloat((contado || "0").replace(",", ".")) || 0;
     const { error } = await supabase.rpc("fechar_caixa", {
-      _sessao: sessao.id, _valor_contado: v, _obs: obs || null,
+      _sessao: sessao.id, _valor_contado: v, _obs: obs || undefined,
     });
     if (error) return toast.error(error.message);
     toast.success("Caixa fechado!");
