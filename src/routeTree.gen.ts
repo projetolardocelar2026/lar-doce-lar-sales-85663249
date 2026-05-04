@@ -22,6 +22,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppContasPagarRouteImport } from './routes/_app/contas-pagar'
 import { Route as AppClientesRouteImport } from './routes/_app/clientes'
 import { Route as AppCategoriasRouteImport } from './routes/_app/categorias'
+import { Route as AppCaixaRouteImport } from './routes/_app/caixa'
 import { Route as AppCadernetaRouteImport } from './routes/_app/caderneta'
 import { Route as AppVendasHistoricoRouteImport } from './routes/_app/vendas.historico'
 
@@ -89,6 +90,11 @@ const AppCategoriasRoute = AppCategoriasRouteImport.update({
   path: '/categorias',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCaixaRoute = AppCaixaRouteImport.update({
+  id: '/caixa',
+  path: '/caixa',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCadernetaRoute = AppCadernetaRouteImport.update({
   id: '/caderneta',
   path: '/caderneta',
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/caderneta': typeof AppCadernetaRoute
+  '/caixa': typeof AppCaixaRoute
   '/categorias': typeof AppCategoriasRoute
   '/clientes': typeof AppClientesRoute
   '/contas-pagar': typeof AppContasPagarRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/caderneta': typeof AppCadernetaRoute
+  '/caixa': typeof AppCaixaRoute
   '/categorias': typeof AppCategoriasRoute
   '/clientes': typeof AppClientesRoute
   '/contas-pagar': typeof AppContasPagarRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/caderneta': typeof AppCadernetaRoute
+  '/_app/caixa': typeof AppCaixaRoute
   '/_app/categorias': typeof AppCategoriasRoute
   '/_app/clientes': typeof AppClientesRoute
   '/_app/contas-pagar': typeof AppContasPagarRoute
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/caderneta'
+    | '/caixa'
     | '/categorias'
     | '/clientes'
     | '/contas-pagar'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/caderneta'
+    | '/caixa'
     | '/categorias'
     | '/clientes'
     | '/contas-pagar'
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/caderneta'
+    | '/_app/caixa'
     | '/_app/categorias'
     | '/_app/clientes'
     | '/_app/contas-pagar'
@@ -301,6 +313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCategoriasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/caixa': {
+      id: '/_app/caixa'
+      path: '/caixa'
+      fullPath: '/caixa'
+      preLoaderRoute: typeof AppCaixaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/caderneta': {
       id: '/_app/caderneta'
       path: '/caderneta'
@@ -320,6 +339,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppCadernetaRoute: typeof AppCadernetaRoute
+  AppCaixaRoute: typeof AppCaixaRoute
   AppCategoriasRoute: typeof AppCategoriasRoute
   AppClientesRoute: typeof AppClientesRoute
   AppContasPagarRoute: typeof AppContasPagarRoute
@@ -335,6 +355,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppCadernetaRoute: AppCadernetaRoute,
+  AppCaixaRoute: AppCaixaRoute,
   AppCategoriasRoute: AppCategoriasRoute,
   AppClientesRoute: AppClientesRoute,
   AppContasPagarRoute: AppContasPagarRoute,
