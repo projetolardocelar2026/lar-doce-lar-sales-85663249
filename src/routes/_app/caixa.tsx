@@ -120,7 +120,7 @@ function CaixaPage() {
     const v = parseFloat((movValor || "0").replace(",", ".")) || 0;
     if (v <= 0) return toast.error("Informe o valor");
     const { error } = await supabase.rpc("registrar_caixa_movimento", {
-      _sessao: sessao.id, _tipo: showMov, _valor: v, _motivo: movMotivo || null,
+      _sessao: sessao.id, _tipo: showMov, _valor: v, _motivo: (movMotivo || "") as string,
     });
     if (error) return toast.error(error.message);
     toast.success(showMov === "sangria" ? "Sangria registrada" : "Suprimento registrado");
