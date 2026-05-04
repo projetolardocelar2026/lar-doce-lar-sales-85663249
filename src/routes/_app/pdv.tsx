@@ -578,28 +578,56 @@ function PDVPage() {
             </div>
 
             <div>
-              <Label className="mb-2 block">Forma de pagamento</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {FORMAS.map((f) => {
-                  const Icon = f.icon;
-                  const active = forma === f.value;
-                  return (
-                    <button
-                      key={f.value}
-                      type="button"
-                      onClick={() => setForma(f.value)}
-                      className={`p-3 border rounded-lg flex items-center gap-2 text-sm transition ${
-                        active
-                          ? "border-primary bg-primary/10 text-primary font-medium"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {f.label}
-                    </button>
-                  );
-                })}
+              <div className="flex items-center justify-between mb-2">
+                <Label>Forma de pagamento</Label>
+                <Button type="button" size="sm" variant={splits.length > 0 ? "default" : "outline"} className="h-7 text-xs"
+                  onClick={() => setShowSplit((v) => !v)}>
+                  {splits.length > 0 ? `Pagto. misto (${splits.length})` : "Pagto. misto"}
+                </Button>
               </div>
+              {splits.length === 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {FORMAS.map((f) => {
+                    const Icon = f.icon;
+                    const active = forma === f.value;
+                    return (
+                      <button key={f.value} type="button" onClick={() => setForma(f.value)}
+                        className={`p-3 border rounded-lg flex items-center gap-2 text-sm transition ${active ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50"}`}>
+                        <Icon className="h-4 w-4" />{f.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {splits.map((s, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-muted/40 rounded p-2 text-sm">
+                      <span>{formaPagamentoLabel[s.forma] ?? s.forma}</span>
+                      <div className="flex items-center gap-2">
+                        <strong>{brl(s.valor)}</strong>
+                        <button onClick={() => removeSplit(idx)} className="text-destructive"><X className="h-3 w-3"/></button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="text-xs text-muted-foreground flex justify-between">
+                    <span>Pago: {brl(splitsTotal)}</span><span>Falta: {brl(Math.max(0, total - splitsTotal))}</span>
+                  </div>
+                </div>
+              )}
+              {showSplit && (
+                <div className="mt-2 p-2 border rounded space-y-2">
+                  <div className="flex gap-2">
+                    <Select value={splitForma} onValueChange={(v) => setSplitForma(v as Forma)}>
+                      <SelectTrigger className="flex-1"><SelectValue/></SelectTrigger>
+                      <SelectContent>
+                        {FORMAS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Input className="w-28" placeholder="Valor" value={splitValor} onChange={(e) => setSplitValor(e.target.value)}/>
+                    <Button type="button" onClick={addSplit}><Plus className="h-4 w-4"/></Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
