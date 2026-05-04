@@ -79,6 +79,15 @@ function PDVPage() {
   const [novoCliErr, setNovoCliErr] = useState<{ nome?: string; telefone?: string; documento?: string }>({});
   const [savingCli, setSavingCli] = useState(false);
   const [aberturaCaixa] = useState<Date>(() => new Date());
+  const [sessaoCaixaId, setSessaoCaixaId] = useState<string | null>(null);
+  const [descontoStr, setDescontoStr] = useState("");
+  const [descontoPct, setDescontoPct] = useState(false);
+  const [taxaStr, setTaxaStr] = useState("");
+  const [usarCreditoStr, setUsarCreditoStr] = useState("");
+  const [splits, setSplits] = useState<SplitPag[]>([]);
+  const [showSplit, setShowSplit] = useState(false);
+  const [splitForma, setSplitForma] = useState<Forma>("dinheiro");
+  const [splitValor, setSplitValor] = useState("");
   const [cupomVenda, setCupomVenda] = useState<null | {
     cliente: Cliente;
     vendaId: string;
