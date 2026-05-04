@@ -540,9 +540,41 @@ function PDVPage() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="bg-muted rounded-lg p-4 flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Total</span>
-              <span className="text-2xl font-bold text-primary">{brl(total)}</span>
+            {!sessaoCaixaId && (
+              <div className="rounded-md bg-amber-100 text-amber-900 text-xs p-2 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4"/> Nenhum caixa aberto. Abra o caixa para conferência precisa do dinheiro.
+              </div>
+            )}
+            <div className="bg-muted rounded-lg p-3 space-y-1 text-sm">
+              <div className="flex justify-between"><span>Subtotal</span><span>{brl(subtotal)}</span></div>
+              {descontoNum > 0 && <div className="flex justify-between text-success"><span>Desconto</span><span>−{brl(descontoNum)}</span></div>}
+              {taxaNum > 0 && <div className="flex justify-between"><span>Taxa</span><span>+{brl(taxaNum)}</span></div>}
+              {creditoUsado > 0 && <div className="flex justify-between text-success"><span>Crédito do cliente</span><span>−{brl(creditoUsado)}</span></div>}
+              <div className="border-t pt-1 flex items-center justify-between">
+                <span className="text-muted-foreground">Total</span>
+                <span className="text-2xl font-bold text-primary">{brl(total)}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label className="text-xs">Desconto</Label>
+                <div className="flex gap-1">
+                  <Input value={descontoStr} onChange={(e) => setDescontoStr(e.target.value)} placeholder="0,00"/>
+                  <Button type="button" size="sm" variant={descontoPct ? "default" : "outline"} onClick={() => setDescontoPct((v) => !v)}>{descontoPct ? "%" : "R$"}</Button>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Taxa/Entrega</Label>
+                <Input value={taxaStr} onChange={(e) => setTaxaStr(e.target.value)} placeholder="0,00"/>
+              </div>
+              <div>
+                <Label className="text-xs">Usar crédito</Label>
+                <Input value={usarCreditoStr} onChange={(e) => setUsarCreditoStr(e.target.value)} placeholder="0,00" disabled={!cliente || Number(cliente?.saldo_credito || 0) <= 0}/>
+                {cliente && Number(cliente.saldo_credito) > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Disp.: {brl(cliente.saldo_credito)}</p>
+                )}
+              </div>
             </div>
 
             <div>
