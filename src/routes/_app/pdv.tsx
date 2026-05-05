@@ -152,6 +152,8 @@ function PDVPage() {
       setReposQtd("");
       return;
     }
+    setPulseId(p.id);
+    setTimeout(() => setPulseId((id) => (id === p.id ? null : id)), 250);
     setCart((cur) => {
       const ex = cur.find((i) => i.produto_id === p.id);
       if (ex) {
