@@ -397,6 +397,30 @@ function PDVPage() {
   const dataAbertura = aberturaCaixa.toLocaleDateString("pt-BR");
   const operadorNome = nomeCompleto || user?.email || "Operador";
 
+  if (!loading && !sessaoCaixaId) {
+    return (
+      <div>
+        <PageHeader title="PDV — Caixa" description="Registre vendas à vista ou na caderneta" />
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="p-6 text-center space-y-4">
+            <AlertTriangle className="h-10 w-10 text-amber-600 mx-auto" />
+            <div>
+              <h2 className="text-lg font-bold text-amber-900">Caixa fechado</h2>
+              <p className="text-sm text-amber-800 mt-1">
+                Atenção: É necessário realizar a Abertura de Caixa (Troco Inicial) antes de iniciar as vendas.
+              </p>
+            </div>
+            <Link to="/caixa">
+              <Button variant="sky" size="lg">
+                <DoorOpen className="h-4 w-4 mr-2" /> Abrir Caixa
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
