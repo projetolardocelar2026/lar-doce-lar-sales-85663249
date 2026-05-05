@@ -97,6 +97,7 @@ function PDVPage() {
   const [estoqueZero, setEstoqueZero] = useState<Produto | null>(null);
   const [reposQtd, setReposQtd] = useState("");
   const [repondo, setRepondo] = useState(false);
+  const [pulseId, setPulseId] = useState<string | null>(null);
   const catalogoUrl = typeof window !== "undefined" ? `${window.location.origin}/` : "";
 
   const loadData = async () => {
