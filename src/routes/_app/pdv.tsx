@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +19,7 @@ import { brl, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
 import { toast } from "sonner";
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, X, Check, UserPlus,
-  Banknote, CreditCard, Smartphone, Notebook, Clock, MessageCircle, AlertTriangle,
+  Banknote, CreditCard, Smartphone, Notebook, Clock, MessageCircle, AlertTriangle, DoorOpen,
 } from "lucide-react";
 import { validateDocumento, validateTelefone, maskDocumento, maskTelefone } from "@/lib/validators";
 import { gerarTextoCupom, abrirWhatsApp } from "@/lib/whatsapp";
@@ -97,6 +97,7 @@ function PDVPage() {
   const [estoqueZero, setEstoqueZero] = useState<Produto | null>(null);
   const [reposQtd, setReposQtd] = useState("");
   const [repondo, setRepondo] = useState(false);
+  const [pulseId, setPulseId] = useState<string | null>(null);
   const catalogoUrl = typeof window !== "undefined" ? `${window.location.origin}/` : "";
 
   const loadData = async () => {
@@ -151,6 +152,8 @@ function PDVPage() {
       setReposQtd("");
       return;
     }
+    setPulseId(p.id);
+    setTimeout(() => setPulseId((id) => (id === p.id ? null : id)), 250);
     setCart((cur) => {
       const ex = cur.find((i) => i.produto_id === p.id);
       if (ex) {
@@ -397,6 +400,30 @@ function PDVPage() {
   const dataAbertura = aberturaCaixa.toLocaleDateString("pt-BR");
   const operadorNome = nomeCompleto || user?.email || "Operador";
 
+  if (!loading && !sessaoCaixaId) {
+    return (
+      <div>
+        <PageHeader title="PDV — Caixa" description="Registre vendas à vista ou na caderneta" />
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="p-6 text-center space-y-4">
+            <AlertTriangle className="h-10 w-10 text-amber-600 mx-auto" />
+            <div>
+              <h2 className="text-lg font-bold text-amber-900">Caixa fechado</h2>
+              <p className="text-sm text-amber-800 mt-1">
+                Atenção: É necessário realizar a Abertura de Caixa (Troco Inicial) antes de iniciar as vendas.
+              </p>
+            </div>
+            <Link to="/caixa">
+              <Button variant="sky" size="lg">
+                <DoorOpen className="h-4 w-4 mr-2" /> Abrir Caixa
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -474,30 +501,40 @@ function PDVPage() {
             </CardContent></Card>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-              {filtered.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => addToCart(p)}
-                  className="text-left bg-card border border-border rounded-xl overflow-hidden hover:border-brand-sky transition shadow-sm"
-                >
-                  <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-                    {p.imagem_url ? (
-                      <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover" />
-                    ) : (
-                      <ShoppingCart className="h-8 w-8 text-muted-foreground" />
+              {filtered.map((p) => {
+                const inCart = cart.find((i) => i.produto_id === p.id)?.quantidade ?? 0;
+                const pulse = pulseId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => addToCart(p)}
+                    className={"relative text-left bg-card border border-border rounded-xl overflow-hidden hover:border-brand-sky shadow-sm " + (pulse ? "ring-2 ring-brand-sky scale-[1.04]" : "")}
+                    style={{ transition: "transform 180ms ease, box-shadow 180ms ease" }}
+                  >
+                    {inCart > 0 && (
+                      <div className="absolute top-1.5 right-1.5 z-10 h-7 min-w-7 px-1.5 rounded-full bg-brand-sky text-brand-navy text-xs font-bold flex items-center justify-center shadow-md">
+                        {inCart}
+                      </div>
                     )}
-                  </div>
-                  <div className="p-2.5">
-                    <div className="text-sm font-medium line-clamp-2 min-h-[2.5rem]">{p.nome}</div>
-                    <div className="flex items-baseline justify-between mt-1">
-                      <span className="text-base font-bold text-primary">{brl(p.preco)}</span>
-                      <span className={`text-xs ${p.estoque <= 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                        Est: {p.estoque}
-                      </span>
+                    <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                      {p.imagem_url ? (
+                        <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover" />
+                      ) : (
+                        <ShoppingCart className="h-8 w-8 text-muted-foreground" />
+                      )}
                     </div>
-                  </div>
-                </button>
-              ))}
+                    <div className="p-2.5">
+                      <div className="text-sm font-medium line-clamp-2 min-h-[2.5rem]">{p.nome}</div>
+                      <div className="flex items-baseline justify-between mt-1">
+                        <span className="text-base font-bold text-primary">{brl(p.preco)}</span>
+                        <span className={"text-xs " + (p.estoque <= 0 ? "text-destructive" : "text-muted-foreground")}>
+                          Est: {p.estoque}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -534,12 +571,12 @@ function PDVPage() {
 
       {/* Checkout */}
       <Dialog open={showCheckout} onOpenChange={setShowCheckout}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg p-0 gap-0 max-h-[90vh] flex flex-col">
+          <DialogHeader className="p-4 border-b shrink-0">
             <DialogTitle>Finalizar venda</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto px-4 py-4 flex-1">
             {!sessaoCaixaId && (
               <div className="rounded-md bg-amber-100 text-amber-900 text-xs p-2 flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4"/> Nenhum caixa aberto. Abra o caixa para conferência precisa do dinheiro.
@@ -560,17 +597,17 @@ function PDVPage() {
               <div>
                 <Label className="text-xs">Desconto</Label>
                 <div className="flex gap-1">
-                  <Input value={descontoStr} onChange={(e) => setDescontoStr(e.target.value)} placeholder="0,00"/>
-                  <Button type="button" size="sm" variant={descontoPct ? "default" : "outline"} onClick={() => setDescontoPct((v) => !v)}>{descontoPct ? "%" : "R$"}</Button>
+                  <Input className="h-8 text-sm" value={descontoStr} onChange={(e) => setDescontoStr(e.target.value)} placeholder="0,00"/>
+                  <Button type="button" size="sm" className="h-8 px-2" variant={descontoPct ? "default" : "outline"} onClick={() => setDescontoPct((v) => !v)}>{descontoPct ? "%" : "R$"}</Button>
                 </div>
               </div>
               <div>
                 <Label className="text-xs">Taxa/Entrega</Label>
-                <Input value={taxaStr} onChange={(e) => setTaxaStr(e.target.value)} placeholder="0,00"/>
+                <Input className="h-8 text-sm" value={taxaStr} onChange={(e) => setTaxaStr(e.target.value)} placeholder="0,00"/>
               </div>
               <div>
                 <Label className="text-xs">Usar crédito</Label>
-                <Input value={usarCreditoStr} onChange={(e) => setUsarCreditoStr(e.target.value)} placeholder="0,00" disabled={!cliente || Number(cliente?.saldo_credito || 0) <= 0}/>
+                <Input className="h-8 text-sm" value={usarCreditoStr} onChange={(e) => setUsarCreditoStr(e.target.value)} placeholder="0,00" disabled={!cliente || Number(cliente?.saldo_credito || 0) <= 0}/>
                 {cliente && Number(cliente.saldo_credito) > 0 && (
                   <p className="text-[10px] text-muted-foreground mt-0.5">Disp.: {brl(cliente.saldo_credito)}</p>
                 )}
@@ -586,14 +623,14 @@ function PDVPage() {
                 </Button>
               </div>
               {splits.length === 0 ? (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {FORMAS.map((f) => {
                     const Icon = f.icon;
                     const active = forma === f.value;
                     return (
                       <button key={f.value} type="button" onClick={() => setForma(f.value)}
-                        className={`p-3 border rounded-lg flex items-center gap-2 text-sm transition ${active ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50"}`}>
-                        <Icon className="h-4 w-4" />{f.label}
+                        className={`px-2 py-2 border rounded-md flex items-center gap-1.5 text-xs transition ${active ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50"}`}>
+                        <Icon className="h-3.5 w-3.5" />{f.label}
                       </button>
                     );
                   })}
@@ -609,22 +646,19 @@ function PDVPage() {
                       </div>
                     </div>
                   ))}
-                  <div className="text-xs text-muted-foreground flex justify-between">
-                    <span>Pago: {brl(splitsTotal)}</span><span>Falta: {brl(Math.max(0, total - splitsTotal))}</span>
-                  </div>
                 </div>
               )}
               {showSplit && (
                 <div className="mt-2 p-2 border rounded space-y-2">
                   <div className="flex gap-2">
                     <Select value={splitForma} onValueChange={(v) => setSplitForma(v as Forma)}>
-                      <SelectTrigger className="flex-1"><SelectValue/></SelectTrigger>
+                      <SelectTrigger className="flex-1 h-8 text-sm"><SelectValue/></SelectTrigger>
                       <SelectContent>
                         {FORMAS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Input className="w-28" placeholder="Valor" value={splitValor} onChange={(e) => setSplitValor(e.target.value)}/>
-                    <Button type="button" onClick={addSplit}><Plus className="h-4 w-4"/></Button>
+                    <Input className="w-24 h-8 text-sm" placeholder="Valor" value={splitValor} onChange={(e) => setSplitValor(e.target.value)}/>
+                    <Button type="button" size="sm" className="h-8" onClick={addSplit}><Plus className="h-4 w-4"/></Button>
                   </div>
                 </div>
               )}
@@ -646,7 +680,7 @@ function PDVPage() {
                 </Button>
               </div>
               <Select value={clienteId || "none"} onValueChange={(v) => setClienteId(v === "none" ? "" : v)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Sem cliente (venda avulsa)" />
                 </SelectTrigger>
                 <SelectContent>
@@ -687,7 +721,7 @@ function PDVPage() {
               )}
             </div>
 
-            {forma === "dinheiro" && (
+            {forma === "dinheiro" && splits.length === 0 && (
               <div>
                 <Label className="mb-2 block">Valor recebido</Label>
                 <Input
@@ -714,19 +748,48 @@ function PDVPage() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowCheckout(false)} disabled={saving}>
-              Cancelar
-            </Button>
-            <Button onClick={finalizar} disabled={saving}>
-              <Check className="h-4 w-4 mr-2" />
-              {saving ? "Salvando…" : `Confirmar ${brl(total)}`}
-            </Button>
+          <DialogFooter className="gap-2 p-4 border-t shrink-0 flex-col sm:flex-row bg-background">
+            {(() => {
+              const usandoSplit = splits.length > 0;
+              const somaPag = usandoSplit ? splitsTotal : total;
+              const falta = usandoSplit ? Math.max(0, total - splitsTotal) : 0;
+              const sobra = usandoSplit ? Math.max(0, splitsTotal - total) : 0;
+              const atingido = !usandoSplit || Math.abs(splitsTotal - total) < 0.01;
+              const podeFinalizar = atingido && cart.length > 0 && !saving;
+              return (
+                <>
+                  <div className="w-full text-center text-xs mb-1 sm:hidden">
+                    {usandoSplit ? (
+                      atingido
+                        ? <span className="text-success font-semibold">✓ Total atingido</span>
+                        : falta > 0
+                          ? <span className="text-destructive">Faltando {brl(falta)}</span>
+                          : <span className="text-destructive">Excede em {brl(sobra)}</span>
+                    ) : <span className="text-success font-semibold">✓ Total atingido</span>}
+                  </div>
+                  <div className="hidden sm:block flex-1 text-xs">
+                    {usandoSplit && !atingido && (
+                      falta > 0
+                        ? <span className="text-destructive font-medium">Faltando {brl(falta)}</span>
+                        : <span className="text-destructive font-medium">Excede em {brl(sobra)}</span>
+                    )}
+                    {(!usandoSplit || atingido) && <span className="text-success font-medium">✓ Total atingido</span>}
+                  </div>
+                  <Button variant="outline" onClick={() => setShowCheckout(false)} disabled={saving}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={finalizar} disabled={!podeFinalizar} variant="sky" size="lg">
+                    <Check className="h-4 w-4 mr-2" />
+                    {saving ? "Salvando…" : `Finalizar ${brl(total)}`}
+                  </Button>
+                  <span className="hidden">{somaPag}</span>
+                </>
+              );
+            })()}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Novo cliente */}
       <Dialog open={showNovoCliente} onOpenChange={setShowNovoCliente}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -857,6 +920,22 @@ function PDVPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Barra flutuante mobile do carrinho */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-3 left-3 right-3 z-30">
+          <button
+            onClick={() => setShowCart(true)}
+            className="w-full bg-gradient-brand text-white rounded-xl shadow-elevated px-4 py-3 flex items-center justify-between"
+          >
+            <span className="flex items-center gap-2 font-semibold">
+              <ShoppingCart className="h-5 w-5" />
+              {cart.reduce((s, i) => s + i.quantidade, 0)} {cart.reduce((s, i) => s + i.quantidade, 0) === 1 ? "item" : "itens"}
+            </span>
+            <span className="text-lg font-bold">{brl(total)}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
