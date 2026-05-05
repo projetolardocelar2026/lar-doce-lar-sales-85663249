@@ -498,30 +498,40 @@ function PDVPage() {
             </CardContent></Card>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-              {filtered.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => addToCart(p)}
-                  className="text-left bg-card border border-border rounded-xl overflow-hidden hover:border-brand-sky transition shadow-sm"
-                >
-                  <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-                    {p.imagem_url ? (
-                      <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover" />
-                    ) : (
-                      <ShoppingCart className="h-8 w-8 text-muted-foreground" />
+              {filtered.map((p) => {
+                const inCart = cart.find((i) => i.produto_id === p.id)?.quantidade ?? 0;
+                const pulse = pulseId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => addToCart(p)}
+                    className={"relative text-left bg-card border border-border rounded-xl overflow-hidden hover:border-brand-sky shadow-sm " + (pulse ? "ring-2 ring-brand-sky scale-[1.04]" : "")}
+                    style={{ transition: "transform 180ms ease, box-shadow 180ms ease" }}
+                  >
+                    {inCart > 0 && (
+                      <div className="absolute top-1.5 right-1.5 z-10 h-7 min-w-7 px-1.5 rounded-full bg-brand-sky text-brand-navy text-xs font-bold flex items-center justify-center shadow-md">
+                        {inCart}
+                      </div>
                     )}
-                  </div>
-                  <div className="p-2.5">
-                    <div className="text-sm font-medium line-clamp-2 min-h-[2.5rem]">{p.nome}</div>
-                    <div className="flex items-baseline justify-between mt-1">
-                      <span className="text-base font-bold text-primary">{brl(p.preco)}</span>
-                      <span className={`text-xs ${p.estoque <= 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                        Est: {p.estoque}
-                      </span>
+                    <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
+                      {p.imagem_url ? (
+                        <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover" />
+                      ) : (
+                        <ShoppingCart className="h-8 w-8 text-muted-foreground" />
+                      )}
                     </div>
-                  </div>
-                </button>
-              ))}
+                    <div className="p-2.5">
+                      <div className="text-sm font-medium line-clamp-2 min-h-[2.5rem]">{p.nome}</div>
+                      <div className="flex items-baseline justify-between mt-1">
+                        <span className="text-base font-bold text-primary">{brl(p.preco)}</span>
+                        <span className={"text-xs " + (p.estoque <= 0 ? "text-destructive" : "text-muted-foreground")}>
+                          Est: {p.estoque}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
