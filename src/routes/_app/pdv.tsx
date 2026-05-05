@@ -534,12 +534,12 @@ function PDVPage() {
 
       {/* Checkout */}
       <Dialog open={showCheckout} onOpenChange={setShowCheckout}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg p-0 gap-0 max-h-[90vh] flex flex-col">
+          <DialogHeader className="p-4 border-b shrink-0">
             <DialogTitle>Finalizar venda</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto px-4 py-4 flex-1">
             {!sessaoCaixaId && (
               <div className="rounded-md bg-amber-100 text-amber-900 text-xs p-2 flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4"/> Nenhum caixa aberto. Abra o caixa para conferência precisa do dinheiro.
@@ -560,17 +560,17 @@ function PDVPage() {
               <div>
                 <Label className="text-xs">Desconto</Label>
                 <div className="flex gap-1">
-                  <Input value={descontoStr} onChange={(e) => setDescontoStr(e.target.value)} placeholder="0,00"/>
-                  <Button type="button" size="sm" variant={descontoPct ? "default" : "outline"} onClick={() => setDescontoPct((v) => !v)}>{descontoPct ? "%" : "R$"}</Button>
+                  <Input className="h-8 text-sm" value={descontoStr} onChange={(e) => setDescontoStr(e.target.value)} placeholder="0,00"/>
+                  <Button type="button" size="sm" className="h-8 px-2" variant={descontoPct ? "default" : "outline"} onClick={() => setDescontoPct((v) => !v)}>{descontoPct ? "%" : "R$"}</Button>
                 </div>
               </div>
               <div>
                 <Label className="text-xs">Taxa/Entrega</Label>
-                <Input value={taxaStr} onChange={(e) => setTaxaStr(e.target.value)} placeholder="0,00"/>
+                <Input className="h-8 text-sm" value={taxaStr} onChange={(e) => setTaxaStr(e.target.value)} placeholder="0,00"/>
               </div>
               <div>
                 <Label className="text-xs">Usar crédito</Label>
-                <Input value={usarCreditoStr} onChange={(e) => setUsarCreditoStr(e.target.value)} placeholder="0,00" disabled={!cliente || Number(cliente?.saldo_credito || 0) <= 0}/>
+                <Input className="h-8 text-sm" value={usarCreditoStr} onChange={(e) => setUsarCreditoStr(e.target.value)} placeholder="0,00" disabled={!cliente || Number(cliente?.saldo_credito || 0) <= 0}/>
                 {cliente && Number(cliente.saldo_credito) > 0 && (
                   <p className="text-[10px] text-muted-foreground mt-0.5">Disp.: {brl(cliente.saldo_credito)}</p>
                 )}
@@ -586,14 +586,14 @@ function PDVPage() {
                 </Button>
               </div>
               {splits.length === 0 ? (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {FORMAS.map((f) => {
                     const Icon = f.icon;
                     const active = forma === f.value;
                     return (
                       <button key={f.value} type="button" onClick={() => setForma(f.value)}
-                        className={`p-3 border rounded-lg flex items-center gap-2 text-sm transition ${active ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50"}`}>
-                        <Icon className="h-4 w-4" />{f.label}
+                        className={`px-2 py-2 border rounded-md flex items-center gap-1.5 text-xs transition ${active ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50"}`}>
+                        <Icon className="h-3.5 w-3.5" />{f.label}
                       </button>
                     );
                   })}
@@ -609,22 +609,19 @@ function PDVPage() {
                       </div>
                     </div>
                   ))}
-                  <div className="text-xs text-muted-foreground flex justify-between">
-                    <span>Pago: {brl(splitsTotal)}</span><span>Falta: {brl(Math.max(0, total - splitsTotal))}</span>
-                  </div>
                 </div>
               )}
               {showSplit && (
                 <div className="mt-2 p-2 border rounded space-y-2">
                   <div className="flex gap-2">
                     <Select value={splitForma} onValueChange={(v) => setSplitForma(v as Forma)}>
-                      <SelectTrigger className="flex-1"><SelectValue/></SelectTrigger>
+                      <SelectTrigger className="flex-1 h-8 text-sm"><SelectValue/></SelectTrigger>
                       <SelectContent>
                         {FORMAS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Input className="w-28" placeholder="Valor" value={splitValor} onChange={(e) => setSplitValor(e.target.value)}/>
-                    <Button type="button" onClick={addSplit}><Plus className="h-4 w-4"/></Button>
+                    <Input className="w-24 h-8 text-sm" placeholder="Valor" value={splitValor} onChange={(e) => setSplitValor(e.target.value)}/>
+                    <Button type="button" size="sm" className="h-8" onClick={addSplit}><Plus className="h-4 w-4"/></Button>
                   </div>
                 </div>
               )}
@@ -646,7 +643,7 @@ function PDVPage() {
                 </Button>
               </div>
               <Select value={clienteId || "none"} onValueChange={(v) => setClienteId(v === "none" ? "" : v)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Sem cliente (venda avulsa)" />
                 </SelectTrigger>
                 <SelectContent>
@@ -687,7 +684,7 @@ function PDVPage() {
               )}
             </div>
 
-            {forma === "dinheiro" && (
+            {forma === "dinheiro" && splits.length === 0 && (
               <div>
                 <Label className="mb-2 block">Valor recebido</Label>
                 <Input
@@ -714,19 +711,48 @@ function PDVPage() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowCheckout(false)} disabled={saving}>
-              Cancelar
-            </Button>
-            <Button onClick={finalizar} disabled={saving}>
-              <Check className="h-4 w-4 mr-2" />
-              {saving ? "Salvando…" : `Confirmar ${brl(total)}`}
-            </Button>
+          <DialogFooter className="gap-2 p-4 border-t shrink-0 flex-col sm:flex-row bg-background">
+            {(() => {
+              const usandoSplit = splits.length > 0;
+              const somaPag = usandoSplit ? splitsTotal : total;
+              const falta = usandoSplit ? Math.max(0, total - splitsTotal) : 0;
+              const sobra = usandoSplit ? Math.max(0, splitsTotal - total) : 0;
+              const atingido = !usandoSplit || Math.abs(splitsTotal - total) < 0.01;
+              const podeFinalizar = atingido && cart.length > 0 && !saving;
+              return (
+                <>
+                  <div className="w-full text-center text-xs mb-1 sm:hidden">
+                    {usandoSplit ? (
+                      atingido
+                        ? <span className="text-success font-semibold">✓ Total atingido</span>
+                        : falta > 0
+                          ? <span className="text-destructive">Faltando {brl(falta)}</span>
+                          : <span className="text-destructive">Excede em {brl(sobra)}</span>
+                    ) : <span className="text-success font-semibold">✓ Total atingido</span>}
+                  </div>
+                  <div className="hidden sm:block flex-1 text-xs">
+                    {usandoSplit && !atingido && (
+                      falta > 0
+                        ? <span className="text-destructive font-medium">Faltando {brl(falta)}</span>
+                        : <span className="text-destructive font-medium">Excede em {brl(sobra)}</span>
+                    )}
+                    {(!usandoSplit || atingido) && <span className="text-success font-medium">✓ Total atingido</span>}
+                  </div>
+                  <Button variant="outline" onClick={() => setShowCheckout(false)} disabled={saving}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={finalizar} disabled={!podeFinalizar} variant="sky" size="lg">
+                    <Check className="h-4 w-4 mr-2" />
+                    {saving ? "Salvando…" : `Finalizar ${brl(total)}`}
+                  </Button>
+                  <span className="hidden">{somaPag}</span>
+                </>
+              );
+            })()}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Novo cliente */}
       <Dialog open={showNovoCliente} onOpenChange={setShowNovoCliente}>
         <DialogContent className="max-w-md">
           <DialogHeader>
