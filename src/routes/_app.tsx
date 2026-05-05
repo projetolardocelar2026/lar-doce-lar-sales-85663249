@@ -37,11 +37,29 @@ function AppLayout() {
   const { user, role, loading, isAdmin, signOut } = useAuth();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
+  const { location } = useRouterState();
+  const [caixaAberto, setCaixaAberto] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!loading && !user) nav({ to: "/login" });
     if (!loading && user && !role) nav({ to: "/login" });
   }, [loading, user, role, nav]);
+
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    const check = async () => {
+      const { data } = await supabase
+        .from("caixa_sessoes")
+        .select("id")
+        .eq("operador_id", user.id)
+        .eq("status", "aberta")
+        .maybeSingle();
+      if (alive) setCaixaAberto(!!data);
+    };
+    check();
+    return () => { alive = false; };
+  }, [user, location.pathname]);
 
   if (loading || !user) {
     return (
@@ -50,6 +68,13 @@ function AppLayout() {
       </div>
     );
   }
+
+  const StatusBadge = (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${caixaAberto ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${caixaAberto ? "bg-success" : "bg-destructive"}`} />
+      Caixa: {caixaAberto ? "Aberto" : "Fechado"}
+    </span>
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,7 +95,7 @@ function AppLayout() {
             <Logo size={32} />
             <div className="font-bold text-sm">Lar Doce Lar</div>
           </div>
-          <Link to="/" className="text-xs opacity-80 hover:opacity-100">Vitrine ↗</Link>
+          <div className="flex items-center gap-2">{StatusBadge}</div>
         </div>
       </header>
 
