@@ -19,7 +19,7 @@ import { brl, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
 import { toast } from "sonner";
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, X, Check, UserPlus,
-  Banknote, CreditCard, Smartphone, Notebook, Clock, MessageCircle, AlertTriangle,
+  Banknote, CreditCard, Smartphone, Notebook, Clock, MessageCircle, AlertTriangle, DoorOpen,
 } from "lucide-react";
 import { validateDocumento, validateTelefone, maskDocumento, maskTelefone } from "@/lib/validators";
 import { gerarTextoCupom, abrirWhatsApp } from "@/lib/whatsapp";
