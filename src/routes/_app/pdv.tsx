@@ -920,6 +920,22 @@ function PDVPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Barra flutuante mobile do carrinho */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-3 left-3 right-3 z-30">
+          <button
+            onClick={() => setShowCart(true)}
+            className="w-full bg-gradient-brand text-white rounded-xl shadow-elevated px-4 py-3 flex items-center justify-between"
+          >
+            <span className="flex items-center gap-2 font-semibold">
+              <ShoppingCart className="h-5 w-5" />
+              {cart.reduce((s, i) => s + i.quantidade, 0)} {cart.reduce((s, i) => s + i.quantidade, 0) === 1 ? "item" : "itens"}
+            </span>
+            <span className="text-lg font-bold">{brl(total)}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
