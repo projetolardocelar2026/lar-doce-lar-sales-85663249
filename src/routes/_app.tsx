@@ -106,6 +106,7 @@ function AppLayout() {
         </aside>
 
         <main className="flex-1 min-w-0">
+          <div className="hidden lg:flex justify-end px-8 pt-4">{StatusBadge}</div>
           <div className="p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
             <Outlet />
           </div>
