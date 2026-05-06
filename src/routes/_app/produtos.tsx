@@ -68,6 +68,45 @@ function ProdutosPage() {
   const [imgPreview, setImgPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const midiaRef = useRef<HTMLInputElement>(null);
+  const [midias, setMidias] = useState<{ id: string; url: string; tipo: "foto"|"arte"|"video"; ordem: number }[]>([]);
+  const [uploadingMidia, setUploadingMidia] = useState(false);
+
+  async function loadMidias(produtoId: string) {
+    const { data } = await supabase
+      .from("produto_midias")
+      .select("id,url,tipo,ordem")
+      .eq("produto_id", produtoId)
+      .order("ordem");
+    setMidias((data ?? []) as any);
+  }
+
+  async function addMidia(file: File, tipo: "foto"|"arte"|"video") {
+    if (!editing) return toast.error("Salve o produto primeiro");
+    if (file.size > 25 * 1024 * 1024) return toast.error("Arquivo muito grande (máx 25MB)");
+    setUploadingMidia(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+      const path = `${editing.id}/${crypto.randomUUID()}.${ext}`;
+      const up = await supabase.storage.from("produtos").upload(path, file, { contentType: file.type });
+      if (up.error) throw up.error;
+      const { data: pub } = supabase.storage.from("produtos").getPublicUrl(path);
+      const { error } = await supabase.from("produto_midias").insert({
+        produto_id: editing.id, url: pub.publicUrl, tipo, ordem: midias.length,
+      });
+      if (error) throw error;
+      toast.success("Mídia adicionada");
+      loadMidias(editing.id);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setUploadingMidia(false); if (midiaRef.current) midiaRef.current.value = ""; }
+  }
+
+  async function removeMidia(id: string) {
+    if (!confirm("Remover esta mídia?")) return;
+    await supabase.from("produto_midias").delete().eq("id", id);
+    if (editing) loadMidias(editing.id);
+  }
+
 
   async function load() {
     setLoading(true);
