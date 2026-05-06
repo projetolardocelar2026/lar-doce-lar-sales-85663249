@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRelatoriosRouteImport } from './routes/_app/relatorios'
@@ -25,11 +26,17 @@ import { Route as AppClientesRouteImport } from './routes/_app/clientes'
 import { Route as AppCategoriasRouteImport } from './routes/_app/categorias'
 import { Route as AppCaixaRouteImport } from './routes/_app/caixa'
 import { Route as AppCadernetaRouteImport } from './routes/_app/caderneta'
+import { Route as AppBannersRouteImport } from './routes/_app/banners'
 import { Route as AppVendasHistoricoRouteImport } from './routes/_app/vendas.historico'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogoRoute = CatalogoRouteImport.update({
+  id: '/catalogo',
+  path: '/catalogo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -106,6 +113,11 @@ const AppCadernetaRoute = AppCadernetaRouteImport.update({
   path: '/caderneta',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBannersRoute = AppBannersRouteImport.update({
+  id: '/banners',
+  path: '/banners',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppVendasHistoricoRoute = AppVendasHistoricoRouteImport.update({
   id: '/vendas/historico',
   path: '/vendas/historico',
@@ -114,7 +126,9 @@ const AppVendasHistoricoRoute = AppVendasHistoricoRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/catalogo': typeof CatalogoRoute
   '/login': typeof LoginRoute
+  '/banners': typeof AppBannersRoute
   '/caderneta': typeof AppCadernetaRoute
   '/caixa': typeof AppCaixaRoute
   '/categorias': typeof AppCategoriasRoute
@@ -132,7 +146,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/catalogo': typeof CatalogoRoute
   '/login': typeof LoginRoute
+  '/banners': typeof AppBannersRoute
   '/caderneta': typeof AppCadernetaRoute
   '/caixa': typeof AppCaixaRoute
   '/categorias': typeof AppCategoriasRoute
@@ -152,7 +168,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/catalogo': typeof CatalogoRoute
   '/login': typeof LoginRoute
+  '/_app/banners': typeof AppBannersRoute
   '/_app/caderneta': typeof AppCadernetaRoute
   '/_app/caixa': typeof AppCaixaRoute
   '/_app/categorias': typeof AppCategoriasRoute
@@ -172,7 +190,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/catalogo'
     | '/login'
+    | '/banners'
     | '/caderneta'
     | '/caixa'
     | '/categorias'
@@ -190,7 +210,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/catalogo'
     | '/login'
+    | '/banners'
     | '/caderneta'
     | '/caixa'
     | '/categorias'
@@ -209,7 +231,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/catalogo'
     | '/login'
+    | '/_app/banners'
     | '/_app/caderneta'
     | '/_app/caixa'
     | '/_app/categorias'
@@ -229,6 +253,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  CatalogoRoute: typeof CatalogoRoute
   LoginRoute: typeof LoginRoute
 }
 
@@ -239,6 +264,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catalogo': {
+      id: '/catalogo'
+      path: '/catalogo'
+      fullPath: '/catalogo'
+      preLoaderRoute: typeof CatalogoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -346,6 +378,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCadernetaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/banners': {
+      id: '/_app/banners'
+      path: '/banners'
+      fullPath: '/banners'
+      preLoaderRoute: typeof AppBannersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/vendas/historico': {
       id: '/_app/vendas/historico'
       path: '/vendas/historico'
@@ -357,6 +396,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppBannersRoute: typeof AppBannersRoute
   AppCadernetaRoute: typeof AppCadernetaRoute
   AppCaixaRoute: typeof AppCaixaRoute
   AppCategoriasRoute: typeof AppCategoriasRoute
@@ -374,6 +414,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBannersRoute: AppBannersRoute,
   AppCadernetaRoute: AppCadernetaRoute,
   AppCaixaRoute: AppCaixaRoute,
   AppCategoriasRoute: AppCategoriasRoute,
@@ -395,6 +436,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  CatalogoRoute: CatalogoRoute,
   LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
