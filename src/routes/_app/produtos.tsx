@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff, Video, Image as ImageIcon, X } from "lucide-react";
 import { brl } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/produtos")({
@@ -68,6 +68,45 @@ function ProdutosPage() {
   const [imgPreview, setImgPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const midiaRef = useRef<HTMLInputElement>(null);
+  const [midias, setMidias] = useState<{ id: string; url: string; tipo: "foto"|"arte"|"video"; ordem: number }[]>([]);
+  const [uploadingMidia, setUploadingMidia] = useState(false);
+
+  async function loadMidias(produtoId: string) {
+    const { data } = await supabase
+      .from("produto_midias")
+      .select("id,url,tipo,ordem")
+      .eq("produto_id", produtoId)
+      .order("ordem");
+    setMidias((data ?? []) as any);
+  }
+
+  async function addMidia(file: File, tipo: "foto"|"arte"|"video") {
+    if (!editing) return toast.error("Salve o produto primeiro");
+    if (file.size > 25 * 1024 * 1024) return toast.error("Arquivo muito grande (máx 25MB)");
+    setUploadingMidia(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+      const path = `${editing.id}/${crypto.randomUUID()}.${ext}`;
+      const up = await supabase.storage.from("produtos").upload(path, file, { contentType: file.type });
+      if (up.error) throw up.error;
+      const { data: pub } = supabase.storage.from("produtos").getPublicUrl(path);
+      const { error } = await supabase.from("produto_midias").insert({
+        produto_id: editing.id, url: pub.publicUrl, tipo, ordem: midias.length,
+      });
+      if (error) throw error;
+      toast.success("Mídia adicionada");
+      loadMidias(editing.id);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setUploadingMidia(false); if (midiaRef.current) midiaRef.current.value = ""; }
+  }
+
+  async function removeMidia(id: string) {
+    if (!confirm("Remover esta mídia?")) return;
+    await supabase.from("produto_midias").delete().eq("id", id);
+    if (editing) loadMidias(editing.id);
+  }
+
 
   async function load() {
     setLoading(true);
@@ -96,6 +135,7 @@ function ProdutosPage() {
     setForm({ ...empty });
     setImgFile(null);
     setImgPreview(null);
+    setMidias([]);
     if (fileRef.current) fileRef.current.value = "";
   }
   function openNew() { reset(); setOpen(true); }
@@ -115,6 +155,7 @@ function ProdutosPage() {
     });
     setImgFile(null);
     setImgPreview(p.imagem_url);
+    loadMidias(p.id);
     setOpen(true);
   }
 
@@ -400,6 +441,82 @@ function ProdutosPage() {
                 </div>
                 <Switch checked={form.destaque} onCheckedChange={(v) => setForm({ ...form, destaque: v })} />
               </div>
+            </div>
+
+            {/* Vitrine interativa: galeria de mídias */}
+            <div className="rounded-xl border-2 border-primary/20 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-sm">Vitrine interativa</div>
+                  <div className="text-xs text-muted-foreground">Fotos, artes e vídeos exibidos no carrossel do cliente</div>
+                </div>
+              </div>
+              {!editing ? (
+                <div className="text-xs text-muted-foreground">Salve o produto primeiro para enviar mídias.</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {midias.map((m) => (
+                      <div key={m.id} className="relative aspect-square rounded-lg overflow-hidden border bg-muted group">
+                        {m.tipo === "video" ? (
+                          <video src={m.url} className="w-full h-full object-cover" muted />
+                        ) : (
+                          <img src={m.url} alt="" className="w-full h-full object-cover" />
+                        )}
+                        <span className="absolute top-1 left-1 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">
+                          {m.tipo}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeMidia(m.id)}
+                          className="absolute top-1 right-1 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {midias.length === 0 && (
+                      <div className="col-span-full text-xs text-muted-foreground text-center py-4">
+                        Nenhuma mídia adicionada ainda.
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={midiaRef} type="file" hidden
+                    accept="image/*,video/mp4,video/webm,video/quicktime"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]; if (!f) return;
+                      const tipo: "foto"|"video" = f.type.startsWith("video/") ? "video" : "foto";
+                      addMidia(f, tipo);
+                    }}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
+                      onClick={() => { if (midiaRef.current) { midiaRef.current.accept = "image/*"; midiaRef.current.click(); } }}>
+                      <ImageIcon className="h-4 w-4" /> Foto
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
+                      onClick={() => {
+                        const inp = document.createElement("input");
+                        inp.type = "file"; inp.accept = "image/*";
+                        inp.onchange = () => { const f = inp.files?.[0]; if (f) addMidia(f, "arte"); };
+                        inp.click();
+                      }}>
+                      <Upload className="h-4 w-4" /> Arte com preço
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
+                      onClick={() => {
+                        const inp = document.createElement("input");
+                        inp.type = "file"; inp.accept = "video/mp4,video/webm,video/quicktime";
+                        inp.onchange = () => { const f = inp.files?.[0]; if (f) addMidia(f, "video"); };
+                        inp.click();
+                      }}>
+                      <Video className="h-4 w-4" /> Vídeo
+                    </Button>
+                    {uploadingMidia && <span className="text-xs text-muted-foreground self-center">Enviando…</span>}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

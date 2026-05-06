@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, ShoppingCart, Sparkles, LogIn, Package } from "lucide-react";
+import { Search, ShoppingCart, Sparkles, LogIn, Package, Share2 } from "lucide-react";
 import { brl, WHATSAPP_NUMBER, STORE_NAME } from "@/lib/format";
 import { toast } from "sonner";
+import { BannerSlider } from "@/components/BannerSlider";
+import { MediaCarousel, type Midia } from "@/components/MediaCarousel";
 
 export const Route = createFileRoute("/")({
   component: VitrinePage,
@@ -30,6 +32,7 @@ type Categoria = { id: string; nome: string; icone: string | null };
 function VitrinePage() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [midias, setMidias] = useState<Record<string, Midia[]>>({});
   const [carrinho, setCarrinho] = useState<Record<string, number>>({});
   const [busca, setBusca] = useState("");
   const [catSel, setCatSel] = useState<string | null>(null);
@@ -37,12 +40,16 @@ function VitrinePage() {
 
   useEffect(() => {
     (async () => {
-      const [{ data: p }, { data: c }] = await Promise.all([
+      const [{ data: p }, { data: c }, { data: m }] = await Promise.all([
         supabase.from("produtos").select("*").eq("ativo", true).order("destaque", { ascending: false }).order("nome"),
         supabase.from("categorias").select("id,nome,icone").eq("ativa", true).order("ordem"),
+        supabase.from("produto_midias").select("id,produto_id,url,tipo,ordem").order("ordem"),
       ]);
       setProdutos((p ?? []) as Produto[]);
       setCategorias((c ?? []) as Categoria[]);
+      const map: Record<string, Midia[]> = {};
+      (m ?? []).forEach((x: any) => { (map[x.produto_id] ||= []).push({ id: x.id, url: x.url, tipo: x.tipo }); });
+      setMidias(map);
       setLoading(false);
     })();
   }, []);
@@ -100,6 +107,21 @@ function VitrinePage() {
             </div>
           </Link>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/10"
+              onClick={async () => {
+                const url = `${window.location.origin}/catalogo`;
+                if (navigator.share) {
+                  try { await navigator.share({ title: STORE_NAME, url }); return; } catch {}
+                }
+                await navigator.clipboard.writeText(url);
+                toast.success("Link do catálogo copiado!");
+              }}
+            >
+              <Share2 className="h-4 w-4" /> <span className="hidden sm:inline">Compartilhar</span>
+            </Button>
             <Link to="/login">
               <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
                 <LogIn className="h-4 w-4" /> <span className="hidden sm:inline">Funcionário</span>
@@ -117,6 +139,8 @@ function VitrinePage() {
           </div>
         </div>
       </header>
+
+      <BannerSlider />
 
       {/* Hero */}
       <section className="bg-gradient-hero text-white">
@@ -171,22 +195,14 @@ function VitrinePage() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {filtered.map((p) => (
-              <Card key={p.id} className="overflow-hidden bg-gradient-card hover:shadow-elevated transition-smooth">
-                <div className="aspect-square bg-secondary relative overflow-hidden">
-                  {p.imagem_url ? (
-                    <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-brand/10">
-                      <Package className="h-12 w-12 text-primary/30" />
-                    </div>
-                  )}
-                  {p.destaque && (
-                    <Badge className="absolute top-2 left-2 bg-accent text-accent-foreground">Destaque</Badge>
-                  )}
-                </div>
+              <Card key={p.id} className="overflow-hidden bg-gradient-card hover:shadow-elevated transition-smooth rounded-2xl">
+                <MediaCarousel midias={midias[p.id] ?? []} fallback={p.imagem_url} alt={p.nome} rounded="rounded-none" />
                 <CardContent className="p-3 space-y-2">
                   <h3 className="font-semibold text-sm line-clamp-2 min-h-[2.5rem]">{p.nome}</h3>
                   <div className="text-lg font-bold text-primary">{brl(p.preco)}</div>
+                  {p.destaque && (
+                    <Badge className="bg-accent text-accent-foreground">Destaque</Badge>
+                  )}
                   {carrinho[p.id] ? (
                     <div className="flex items-center justify-between gap-2">
                       <Button size="sm" variant="outline" onClick={() => remove(p.id)}>−</Button>

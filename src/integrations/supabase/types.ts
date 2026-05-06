@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      banners: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          fim: string | null
+          id: string
+          imagem_url: string
+          inicio: string | null
+          link_url: string | null
+          ordem: number
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          fim?: string | null
+          id?: string
+          imagem_url: string
+          inicio?: string | null
+          link_url?: string | null
+          ordem?: number
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          fim?: string | null
+          id?: string
+          imagem_url?: string
+          inicio?: string | null
+          link_url?: string | null
+          ordem?: number
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       caixa_movimentos: {
         Row: {
           created_at: string
@@ -621,6 +660,41 @@ export type Database = {
           venda_id?: string
         }
         Relationships: []
+      }
+      produto_midias: {
+        Row: {
+          created_at: string
+          id: string
+          ordem: number
+          produto_id: string
+          tipo: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          produto_id: string
+          tipo: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          produto_id?: string
+          tipo?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produto_midias_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       produtos: {
         Row: {
