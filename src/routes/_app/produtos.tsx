@@ -442,6 +442,82 @@ function ProdutosPage() {
                 <Switch checked={form.destaque} onCheckedChange={(v) => setForm({ ...form, destaque: v })} />
               </div>
             </div>
+
+            {/* Vitrine interativa: galeria de mídias */}
+            <div className="rounded-xl border-2 border-primary/20 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-sm">Vitrine interativa</div>
+                  <div className="text-xs text-muted-foreground">Fotos, artes e vídeos exibidos no carrossel do cliente</div>
+                </div>
+              </div>
+              {!editing ? (
+                <div className="text-xs text-muted-foreground">Salve o produto primeiro para enviar mídias.</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {midias.map((m) => (
+                      <div key={m.id} className="relative aspect-square rounded-lg overflow-hidden border bg-muted group">
+                        {m.tipo === "video" ? (
+                          <video src={m.url} className="w-full h-full object-cover" muted />
+                        ) : (
+                          <img src={m.url} alt="" className="w-full h-full object-cover" />
+                        )}
+                        <span className="absolute top-1 left-1 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">
+                          {m.tipo}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeMidia(m.id)}
+                          className="absolute top-1 right-1 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {midias.length === 0 && (
+                      <div className="col-span-full text-xs text-muted-foreground text-center py-4">
+                        Nenhuma mídia adicionada ainda.
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={midiaRef} type="file" hidden
+                    accept="image/*,video/mp4,video/webm,video/quicktime"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]; if (!f) return;
+                      const tipo: "foto"|"video" = f.type.startsWith("video/") ? "video" : "foto";
+                      addMidia(f, tipo);
+                    }}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
+                      onClick={() => { if (midiaRef.current) { midiaRef.current.accept = "image/*"; midiaRef.current.click(); } }}>
+                      <ImageIcon className="h-4 w-4" /> Foto
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
+                      onClick={() => {
+                        const inp = document.createElement("input");
+                        inp.type = "file"; inp.accept = "image/*";
+                        inp.onchange = () => { const f = inp.files?.[0]; if (f) addMidia(f, "arte"); };
+                        inp.click();
+                      }}>
+                      <Upload className="h-4 w-4" /> Arte com preço
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
+                      onClick={() => {
+                        const inp = document.createElement("input");
+                        inp.type = "file"; inp.accept = "video/mp4,video/webm,video/quicktime";
+                        inp.onchange = () => { const f = inp.files?.[0]; if (f) addMidia(f, "video"); };
+                        inp.click();
+                      }}>
+                      <Video className="h-4 w-4" /> Vídeo
+                    </Button>
+                    {uploadingMidia && <span className="text-xs text-muted-foreground self-center">Enviando…</span>}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <DialogFooter>
