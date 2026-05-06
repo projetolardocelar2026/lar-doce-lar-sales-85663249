@@ -32,6 +32,7 @@ type Categoria = { id: string; nome: string; icone: string | null };
 function VitrinePage() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [midias, setMidias] = useState<Record<string, Midia[]>>({});
   const [carrinho, setCarrinho] = useState<Record<string, number>>({});
   const [busca, setBusca] = useState("");
   const [catSel, setCatSel] = useState<string | null>(null);
@@ -39,12 +40,16 @@ function VitrinePage() {
 
   useEffect(() => {
     (async () => {
-      const [{ data: p }, { data: c }] = await Promise.all([
+      const [{ data: p }, { data: c }, { data: m }] = await Promise.all([
         supabase.from("produtos").select("*").eq("ativo", true).order("destaque", { ascending: false }).order("nome"),
         supabase.from("categorias").select("id,nome,icone").eq("ativa", true).order("ordem"),
+        supabase.from("produto_midias").select("id,produto_id,url,tipo,ordem").order("ordem"),
       ]);
       setProdutos((p ?? []) as Produto[]);
       setCategorias((c ?? []) as Categoria[]);
+      const map: Record<string, Midia[]> = {};
+      (m ?? []).forEach((x: any) => { (map[x.produto_id] ||= []).push({ id: x.id, url: x.url, tipo: x.tipo }); });
+      setMidias(map);
       setLoading(false);
     })();
   }, []);
