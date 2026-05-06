@@ -195,22 +195,14 @@ function VitrinePage() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {filtered.map((p) => (
-              <Card key={p.id} className="overflow-hidden bg-gradient-card hover:shadow-elevated transition-smooth">
-                <div className="aspect-square bg-secondary relative overflow-hidden">
-                  {p.imagem_url ? (
-                    <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-brand/10">
-                      <Package className="h-12 w-12 text-primary/30" />
-                    </div>
-                  )}
-                  {p.destaque && (
-                    <Badge className="absolute top-2 left-2 bg-accent text-accent-foreground">Destaque</Badge>
-                  )}
-                </div>
+              <Card key={p.id} className="overflow-hidden bg-gradient-card hover:shadow-elevated transition-smooth rounded-2xl">
+                <MediaCarousel midias={midias[p.id] ?? []} fallback={p.imagem_url} alt={p.nome} rounded="rounded-none" />
                 <CardContent className="p-3 space-y-2">
                   <h3 className="font-semibold text-sm line-clamp-2 min-h-[2.5rem]">{p.nome}</h3>
                   <div className="text-lg font-bold text-primary">{brl(p.preco)}</div>
+                  {p.destaque && (
+                    <Badge className="bg-accent text-accent-foreground">Destaque</Badge>
+                  )}
                   {carrinho[p.id] ? (
                     <div className="flex items-center justify-between gap-2">
                       <Button size="sm" variant="outline" onClick={() => remove(p.id)}>−</Button>
