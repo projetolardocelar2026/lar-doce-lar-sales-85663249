@@ -135,6 +135,7 @@ function ProdutosPage() {
     setForm({ ...empty });
     setImgFile(null);
     setImgPreview(null);
+    setMidias([]);
     if (fileRef.current) fileRef.current.value = "";
   }
   function openNew() { reset(); setOpen(true); }
@@ -154,6 +155,7 @@ function ProdutosPage() {
     });
     setImgFile(null);
     setImgPreview(p.imagem_url);
+    loadMidias(p.id);
     setOpen(true);
   }
 
