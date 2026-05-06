@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, ShoppingCart, Sparkles, LogIn, Package } from "lucide-react";
+import { Search, ShoppingCart, Sparkles, LogIn, Package, Share2 } from "lucide-react";
 import { brl, WHATSAPP_NUMBER, STORE_NAME } from "@/lib/format";
 import { toast } from "sonner";
+import { BannerSlider } from "@/components/BannerSlider";
+import { MediaCarousel, type Midia } from "@/components/MediaCarousel";
 
 export const Route = createFileRoute("/")({
   component: VitrinePage,
