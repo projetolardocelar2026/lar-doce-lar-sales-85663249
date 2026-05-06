@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   { to: "/caixa", label: "Caixa (Abertura/Fechamento)", icon: DoorOpen },
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { to: "/produtos", label: "Produtos", icon: Package },
+  { to: "/banners", label: "Banners promocionais", icon: Image, adminOnly: true },
   { to: "/categorias", label: "Categorias", icon: Tags, adminOnly: true },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/garrafas", label: "Garrafas / Cashback", icon: Recycle },
