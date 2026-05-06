@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff, Video, Image as ImageIcon, X } from "lucide-react";
 import { brl } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/produtos")({
