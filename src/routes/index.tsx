@@ -107,6 +107,21 @@ function VitrinePage() {
             </div>
           </Link>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/10"
+              onClick={async () => {
+                const url = `${window.location.origin}/catalogo`;
+                if (navigator.share) {
+                  try { await navigator.share({ title: STORE_NAME, url }); return; } catch {}
+                }
+                await navigator.clipboard.writeText(url);
+                toast.success("Link do catálogo copiado!");
+              }}
+            >
+              <Share2 className="h-4 w-4" /> <span className="hidden sm:inline">Compartilhar</span>
+            </Button>
             <Link to="/login">
               <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
                 <LogIn className="h-4 w-4" /> <span className="hidden sm:inline">Funcionário</span>
@@ -124,6 +139,8 @@ function VitrinePage() {
           </div>
         </div>
       </header>
+
+      <BannerSlider />
 
       {/* Hero */}
       <section className="bg-gradient-hero text-white">
