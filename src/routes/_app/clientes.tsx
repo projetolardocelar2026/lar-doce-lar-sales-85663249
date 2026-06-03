@@ -715,7 +715,23 @@ function ClienteDetalheDialog({
                             <Badge variant="destructive" className="ml-1">Pendente</Badge>
                           )}
                         </div>
-                        <div className="font-bold text-primary">{brl(v.total)}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-bold text-primary">{brl(v.total)}</div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs gap-1"
+                            onClick={() => {
+                              if (!cliente.telefone) {
+                                toast.error("Cliente sem número de WhatsApp cadastrado.");
+                                return;
+                              }
+                              abrirWhatsApp(cliente.telefone, resumoVendaWhatsApp(v));
+                            }}
+                          >
+                            <Send className="size-3" /> WhatsApp
+                          </Button>
+                        </div>
                       </div>
                       <ul className="text-sm text-muted-foreground space-y-0.5">
                         {v.itens.map((i, ix) => (
