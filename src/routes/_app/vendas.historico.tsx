@@ -34,6 +34,7 @@ type Venda = {
   observacoes: string | null;
   cliente_id: string | null;
   cliente_nome?: string | null;
+  cliente_telefone?: string | null;
 };
 type Item = { produto_nome: string; quantidade: number; preco_unitario: number; subtotal: number };
 
