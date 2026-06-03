@@ -171,6 +171,21 @@ function HistoricoVendas() {
                     <Button
                       size="icon"
                       variant="ghost"
+                      disabled={cancelada || !v.cliente_id}
+                      onClick={() => enviarWhatsApp(v)}
+                      title={
+                        !v.cliente_id
+                          ? "Venda avulsa — sem cliente"
+                          : !v.cliente_telefone
+                          ? "Cliente sem telefone cadastrado"
+                          : "Enviar cupom no WhatsApp"
+                      }
+                    >
+                      <Send className={`h-4 w-4 ${cancelada || !v.cliente_id ? "text-muted-foreground" : "text-success"}`} />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
                       disabled={cancelada}
                       onClick={() => setConfirmId(v.id)}
                       title="Cancelar venda"
