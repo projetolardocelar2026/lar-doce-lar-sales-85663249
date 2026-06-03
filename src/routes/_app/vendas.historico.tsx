@@ -17,8 +17,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { brl, formaPagamentoLabel } from "@/lib/format";
+import { abrirWhatsApp, gerarTextoCupom } from "@/lib/whatsapp";
 import { toast } from "sonner";
-import { Ban, Eye, Search, Receipt } from "lucide-react";
+import { Ban, Eye, Search, Receipt, Send } from "lucide-react";
 
 export const Route = createFileRoute("/_app/vendas/historico")({
   component: HistoricoVendas,
