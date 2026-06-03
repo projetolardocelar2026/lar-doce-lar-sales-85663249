@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Send } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { PageHeader } from "../_app";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Plus, Pencil, Trash2, Search, Phone, Mail, MapPin, User, Instagram,
-  Facebook, FileDown, FileText, Eye, MessageCircle, Heart,
+  Facebook, FileDown, FileText, Eye, MessageCircle, Heart, Send,
 } from "lucide-react";
 import { brl, fmtDate, fmtDateOnly, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
 import {
