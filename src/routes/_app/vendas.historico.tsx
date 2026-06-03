@@ -17,8 +17,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { brl, formaPagamentoLabel } from "@/lib/format";
+import { abrirWhatsApp, gerarTextoCupom } from "@/lib/whatsapp";
 import { toast } from "sonner";
-import { Ban, Eye, Search, Receipt } from "lucide-react";
+import { Ban, Eye, Search, Receipt, Send } from "lucide-react";
 
 export const Route = createFileRoute("/_app/vendas/historico")({
   component: HistoricoVendas,
@@ -33,6 +34,7 @@ type Venda = {
   observacoes: string | null;
   cliente_id: string | null;
   cliente_nome?: string | null;
+  cliente_telefone?: string | null;
 };
 type Item = { produto_nome: string; quantidade: number; preco_unitario: number; subtotal: number };
 
@@ -50,11 +52,15 @@ function HistoricoVendas() {
     setLoading(true);
     const { data, error } = await supabase
       .from("vendas")
-      .select("id,data_venda,total,forma_pagamento,status,observacoes,cliente_id,clientes(nome)")
+      .select("id,data_venda,total,forma_pagamento,status,observacoes,cliente_id,clientes(nome,telefone)")
       .order("data_venda", { ascending: false })
       .limit(500);
     if (error) toast.error(error.message);
-    setVendas(((data as any[]) || []).map((v) => ({ ...v, cliente_nome: v.clientes?.nome ?? null })));
+    setVendas(((data as any[]) || []).map((v) => ({
+      ...v,
+      cliente_nome: v.clientes?.nome ?? null,
+      cliente_telefone: v.clientes?.telefone ?? null,
+    })));
     setLoading(false);
   }
   useEffect(() => { carregar(); }, []);
@@ -80,6 +86,36 @@ function HistoricoVendas() {
       .eq("venda_id", v.id);
     setItens((data as Item[]) || []);
   }
+
+  async function enviarWhatsApp(v: Venda) {
+    if (!v.cliente_id) {
+      toast.error("Venda avulsa — sem cliente para enviar");
+      return;
+    }
+    if (!v.cliente_telefone) {
+      toast.error("Cliente sem telefone cadastrado");
+      return;
+    }
+    const { data } = await supabase
+      .from("itens_venda")
+      .select("produto_nome,quantidade,preco_unitario")
+      .eq("venda_id", v.id);
+    const itensVenda = ((data as any[]) || []).map((i) => ({
+      nome: i.produto_nome,
+      quantidade: Number(i.quantidade),
+      preco: Number(i.preco_unitario),
+    }));
+    const texto = gerarTextoCupom({
+      vendaId: v.id,
+      data: new Date(v.data_venda),
+      clienteNome: v.cliente_nome,
+      itens: itensVenda,
+      total: Number(v.total),
+      formaPagamento: v.forma_pagamento,
+    });
+    abrirWhatsApp(v.cliente_telefone, texto);
+  }
+
 
   async function cancelar() {
     if (!confirmId) return;
@@ -161,6 +197,21 @@ function HistoricoVendas() {
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => abrirDetalhe(v)} title="Ver detalhes">
                       <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={cancelada || !v.cliente_id}
+                      onClick={() => enviarWhatsApp(v)}
+                      title={
+                        !v.cliente_id
+                          ? "Venda avulsa — sem cliente"
+                          : !v.cliente_telefone
+                          ? "Cliente sem telefone cadastrado"
+                          : "Enviar cupom no WhatsApp"
+                      }
+                    >
+                      <Send className={`h-4 w-4 ${cancelada || !v.cliente_id ? "text-muted-foreground" : "text-success"}`} />
                     </Button>
                     <Button
                       size="icon"
