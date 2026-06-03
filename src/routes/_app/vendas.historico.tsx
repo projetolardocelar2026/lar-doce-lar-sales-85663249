@@ -87,6 +87,36 @@ function HistoricoVendas() {
     setItens((data as Item[]) || []);
   }
 
+  async function enviarWhatsApp(v: Venda) {
+    if (!v.cliente_id) {
+      toast.error("Venda avulsa — sem cliente para enviar");
+      return;
+    }
+    if (!v.cliente_telefone) {
+      toast.error("Cliente sem telefone cadastrado");
+      return;
+    }
+    const { data } = await supabase
+      .from("itens_venda")
+      .select("produto_nome,quantidade,preco_unitario")
+      .eq("venda_id", v.id);
+    const itensVenda = ((data as any[]) || []).map((i) => ({
+      nome: i.produto_nome,
+      quantidade: Number(i.quantidade),
+      preco: Number(i.preco_unitario),
+    }));
+    const texto = gerarTextoCupom({
+      vendaId: v.id,
+      data: new Date(v.data_venda),
+      clienteNome: v.cliente_nome,
+      itens: itensVenda,
+      total: Number(v.total),
+      formaPagamento: v.forma_pagamento,
+    });
+    abrirWhatsApp(v.cliente_telefone, texto);
+  }
+
+
   async function cancelar() {
     if (!confirmId) return;
     setCancelando(true);
