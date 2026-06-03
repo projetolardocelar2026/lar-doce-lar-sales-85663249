@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Plus, Pencil, Trash2, Search, Phone, Mail, MapPin, User, Instagram,
-  Facebook, FileDown, FileText, Eye, MessageCircle, Heart,
+  Facebook, FileDown, FileText, Eye, MessageCircle, Heart, Send,
 } from "lucide-react";
 import { brl, fmtDate, fmtDateOnly, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
 import {
@@ -533,6 +533,31 @@ function ClientesPage() {
   );
 }
 
+function resumoVendaWhatsApp(v: VendaCli): string {
+  const linhas: string[] = [];
+  linhas.push(`*${STORE_NAME}*`);
+  linhas.push(``);
+  linhas.push(`*Resumo da Compra*`);
+  linhas.push(``);
+  const dt = new Date(v.data_venda).toLocaleString("pt-BR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+  linhas.push(`Data: ${dt}`);
+  linhas.push(`Número da Venda: #${v.id.slice(0, 8).toUpperCase()}`);
+  linhas.push(``);
+  linhas.push(`*Itens:*`);
+  for (const it of v.itens) {
+    linhas.push(`${it.quantidade}x ${it.produto_nome} — ${brl(it.subtotal)}`);
+  }
+  linhas.push(``);
+  linhas.push(`*Total da Compra:* ${brl(v.total)}`);
+  linhas.push(`*Forma de Pagamento:* ${formaPagamentoLabel[v.forma_pagamento] ?? v.forma_pagamento}`);
+  linhas.push(``);
+  linhas.push("Obrigado pela preferência.");
+  return linhas.join("\n");
+}
+
 function ClienteDetalheDialog({
   cliente, onClose, onEdit,
 }: { cliente: Cliente; onClose: () => void; onEdit: () => void }) {
@@ -690,7 +715,23 @@ function ClienteDetalheDialog({
                             <Badge variant="destructive" className="ml-1">Pendente</Badge>
                           )}
                         </div>
-                        <div className="font-bold text-primary">{brl(v.total)}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-bold text-primary">{brl(v.total)}</div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs gap-1"
+                            onClick={() => {
+                              if (!cliente.telefone) {
+                                toast.error("Cliente sem número de WhatsApp cadastrado.");
+                                return;
+                              }
+                              abrirWhatsApp(cliente.telefone, resumoVendaWhatsApp(v));
+                            }}
+                          >
+                            <Send className="size-3" /> WhatsApp
+                          </Button>
+                        </div>
                       </div>
                       <ul className="text-sm text-muted-foreground space-y-0.5">
                         {v.itens.map((i, ix) => (
