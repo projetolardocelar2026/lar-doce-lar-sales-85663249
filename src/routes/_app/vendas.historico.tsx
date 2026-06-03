@@ -52,11 +52,15 @@ function HistoricoVendas() {
     setLoading(true);
     const { data, error } = await supabase
       .from("vendas")
-      .select("id,data_venda,total,forma_pagamento,status,observacoes,cliente_id,clientes(nome)")
+      .select("id,data_venda,total,forma_pagamento,status,observacoes,cliente_id,clientes(nome,telefone)")
       .order("data_venda", { ascending: false })
       .limit(500);
     if (error) toast.error(error.message);
-    setVendas(((data as any[]) || []).map((v) => ({ ...v, cliente_nome: v.clientes?.nome ?? null })));
+    setVendas(((data as any[]) || []).map((v) => ({
+      ...v,
+      cliente_nome: v.clientes?.nome ?? null,
+      cliente_telefone: v.clientes?.telefone ?? null,
+    })));
     setLoading(false);
   }
   useEffect(() => { carregar(); }, []);
