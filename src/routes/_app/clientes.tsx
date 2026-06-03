@@ -533,6 +533,31 @@ function ClientesPage() {
   );
 }
 
+function resumoVendaWhatsApp(v: VendaCli): string {
+  const linhas: string[] = [];
+  linhas.push(`*${STORE_NAME}*`);
+  linhas.push(``);
+  linhas.push(`*Resumo da Compra*`);
+  linhas.push(``);
+  const dt = new Date(v.data_venda).toLocaleString("pt-BR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+  linhas.push(`Data: ${dt}`);
+  linhas.push(`Número da Venda: #${v.id.slice(0, 8).toUpperCase()}`);
+  linhas.push(``);
+  linhas.push(`*Itens:*`);
+  for (const it of v.itens) {
+    linhas.push(`${it.quantidade}x ${it.produto_nome} — ${brl(it.subtotal)}`);
+  }
+  linhas.push(``);
+  linhas.push(`*Total da Compra:* ${brl(v.total)}`);
+  linhas.push(`*Forma de Pagamento:* ${formaPagamentoLabel[v.forma_pagamento] ?? v.forma_pagamento}`);
+  linhas.push(``);
+  linhas.push("Obrigado pela preferência.");
+  return linhas.join("\n");
+}
+
 function ClienteDetalheDialog({
   cliente, onClose, onEdit,
 }: { cliente: Cliente; onClose: () => void; onEdit: () => void }) {
