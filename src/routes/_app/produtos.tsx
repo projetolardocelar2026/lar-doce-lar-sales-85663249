@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff, Video, Image as ImageIcon, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff, Video, Image as ImageIcon, X, Star, ArrowLeft, ArrowRight, Eye } from "lucide-react";
 import { brl } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/produtos")({
@@ -106,6 +106,30 @@ function ProdutosPage() {
     await supabase.from("produto_midias").delete().eq("id", id);
     if (editing) loadMidias(editing.id);
   }
+
+  async function definirComoPrincipal(url: string) {
+    if (!editing) return;
+    const { error } = await supabase.from("produtos").update({ imagem_url: url }).eq("id", editing.id);
+    if (error) return toast.error(error.message);
+    setImgPreview(url);
+    setEditing({ ...editing, imagem_url: url });
+    toast.success("Foto principal definida");
+    load();
+  }
+
+  async function moverMidia(id: string, dir: -1 | 1) {
+    const idx = midias.findIndex((m) => m.id === id);
+    const novo = idx + dir;
+    if (idx < 0 || novo < 0 || novo >= midias.length) return;
+    const a = midias[idx], b = midias[novo];
+    await Promise.all([
+      supabase.from("produto_midias").update({ ordem: b.ordem }).eq("id", a.id),
+      supabase.from("produto_midias").update({ ordem: a.ordem }).eq("id", b.id),
+    ]);
+    if (editing) loadMidias(editing.id);
+  }
+
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
 
   async function load() {
@@ -456,31 +480,59 @@ function ProdutosPage() {
               ) : (
                 <>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                    {midias.map((m) => (
-                      <div key={m.id} className="relative aspect-square rounded-lg overflow-hidden border bg-muted group">
-                        {m.tipo === "video" ? (
-                          <video src={m.url} className="w-full h-full object-cover" muted />
-                        ) : (
-                          <img src={m.url} alt="" className="w-full h-full object-cover" />
-                        )}
-                        <span className="absolute top-1 left-1 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">
-                          {m.tipo}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeMidia(m.id)}
-                          className="absolute top-1 right-1 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+                    {midias.map((m, i) => {
+                      const isPrincipal = editing?.imagem_url === m.url;
+                      return (
+                        <div key={m.id} className={`relative aspect-square rounded-lg overflow-hidden border-2 bg-muted group ${isPrincipal ? "border-primary ring-2 ring-primary/30" : "border-transparent"}`}>
+                          {m.tipo === "video" ? (
+                            <video src={m.url} className="w-full h-full object-cover" muted />
+                          ) : (
+                            <img src={m.url} alt="" className="w-full h-full object-cover" />
+                          )}
+                          <span className="absolute top-1 left-1 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">
+                            {m.tipo}
+                          </span>
+                          {isPrincipal && (
+                            <span className="absolute bottom-1 left-1 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded flex items-center gap-1">
+                              <Star className="h-2.5 w-2.5 fill-current" /> Principal
+                            </span>
+                          )}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-wrap items-center justify-center gap-1 p-1">
+                            <button type="button" title="Ampliar" onClick={() => setLightbox(m.url)}
+                              className="h-7 w-7 rounded-full bg-white/90 text-foreground flex items-center justify-center">
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                            {m.tipo !== "video" && !isPrincipal && (
+                              <button type="button" title="Definir como principal" onClick={() => definirComoPrincipal(m.url)}
+                                className="h-7 w-7 rounded-full bg-white/90 text-primary flex items-center justify-center">
+                                <Star className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <button type="button" title="Mover para esquerda" disabled={i === 0} onClick={() => moverMidia(m.id, -1)}
+                              className="h-7 w-7 rounded-full bg-white/90 text-foreground flex items-center justify-center disabled:opacity-30">
+                              <ArrowLeft className="h-3.5 w-3.5" />
+                            </button>
+                            <button type="button" title="Mover para direita" disabled={i === midias.length - 1} onClick={() => moverMidia(m.id, 1)}
+                              className="h-7 w-7 rounded-full bg-white/90 text-foreground flex items-center justify-center disabled:opacity-30">
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </button>
+                            <button type="button" title="Remover" onClick={() => removeMidia(m.id)}
+                              className="h-7 w-7 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                     {midias.length === 0 && (
                       <div className="col-span-full text-xs text-muted-foreground text-center py-4">
                         Nenhuma mídia adicionada ainda.
                       </div>
                     )}
                   </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Passe o mouse sobre uma mídia para ampliar, definir como principal, reordenar ou remover.
+                  </p>
                   <input
                     ref={midiaRef} type="file" hidden
                     accept="image/*,video/mp4,video/webm,video/quicktime"
@@ -526,6 +578,16 @@ function ProdutosPage() {
               {saving ? "Salvando…" : "Salvar"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
+        <DialogContent className="max-w-3xl p-2 bg-black/95 border-0">
+          {lightbox && (
+            lightbox.match(/\.(mp4|webm|mov)$/i)
+              ? <video src={lightbox} controls autoPlay className="w-full max-h-[80vh] rounded" />
+              : <img src={lightbox} alt="" className="w-full max-h-[80vh] object-contain rounded" />
+          )}
         </DialogContent>
       </Dialog>
     </div>
