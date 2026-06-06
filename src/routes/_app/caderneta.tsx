@@ -21,7 +21,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Search, Plus, HandCoins, History, AlertCircle, AlertTriangle, ShieldAlert } from "lucide-react";
+import { Search, Plus, HandCoins, History, AlertCircle, AlertTriangle, ShieldAlert, CalendarClock, Pencil } from "lucide-react";
 
 type RiscoNivel = "ok" | "atencao" | "alto" | "estourado";
 
