@@ -810,6 +810,17 @@ function CadernetaPage() {
               </div>
             </div>
             <div>
+              <Label>Vencimento</Label>
+              <Input
+                type="date"
+                value={vendaVenc}
+                onChange={(e) => setVendaVenc(e.target.value)}
+              />
+              <div className="text-xs text-muted-foreground mt-1">
+                Padrão: 30 dias após a venda. Pode ser ajustado depois.
+              </div>
+            </div>
+            <div>
               <Label>Descrição / observação</Label>
               <Textarea
                 rows={2}
@@ -824,6 +835,41 @@ function CadernetaPage() {
               Cancelar
             </Button>
             <Button onClick={registrarVendaPrazo}>Lançar na caderneta</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: editar vencimento */}
+      <Dialog open={vencOpen} onOpenChange={setVencOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5" /> Alterar vencimento
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nova data de vencimento</Label>
+              <Input
+                type="date"
+                value={vencNovo}
+                onChange={(e) => setVencNovo(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label>Motivo da alteração</Label>
+              <Textarea
+                rows={2}
+                value={vencMotivo}
+                onChange={(e) => setVencMotivo(e.target.value)}
+                placeholder="Ex.: Cliente pediu mais prazo"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVencOpen(false)}>Cancelar</Button>
+            <Button onClick={salvarNovoVenc}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
