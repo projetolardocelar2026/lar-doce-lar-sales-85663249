@@ -248,6 +248,8 @@ function CadernetaPage() {
     setVendaValor("");
     setVendaData(todayInput());
     setVendaObs("");
+    const venc = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    setVendaVenc(venc.toISOString().slice(0, 10));
     setVendaOpen(true);
   };
 
@@ -278,6 +280,8 @@ function CadernetaPage() {
         status: "pendente",
         observacoes: vendaObs || "Lançamento manual de caderneta",
         atendente_id: user?.id ?? null,
+        vencimento_caderneta: vendaVenc || null,
+        cobranca_status: "aberta",
       })
       .select("id")
       .single();
@@ -285,7 +289,6 @@ function CadernetaPage() {
       toast.error("Erro ao registrar venda: " + (error?.message ?? ""));
       return;
     }
-    // item genérico para preservar histórico
     await supabase.from("itens_venda").insert({
       venda_id: venda.id,
       produto_nome: vendaObs || "Lançamento de caderneta",
@@ -303,6 +306,39 @@ function CadernetaPage() {
       .maybeSingle();
     if (data) setSelecionado(data as Cliente);
     await carregarHistorico(selecionado.id);
+  };
+
+  // ============ EDITAR VENCIMENTO ============
+  const abrirEditarVenc = (v: Venda) => {
+    setVencVendaId(v.id);
+    setVencNovo(v.vencimento_caderneta ?? new Date().toISOString().slice(0, 10));
+    setVencMotivo("");
+    setVencOpen(true);
+  };
+
+  const salvarNovoVenc = async () => {
+    if (!vencVendaId || !vencNovo) {
+      toast.error("Informe a nova data");
+      return;
+    }
+    const { error } = await supabase.rpc("editar_vencimento_caderneta", {
+      _venda: vencVendaId,
+      _novo: vencNovo,
+      _motivo: vencMotivo || null,
+    });
+    if (error) {
+      toast.error("Erro ao alterar vencimento: " + error.message);
+      return;
+    }
+    toast.success("Vencimento atualizado");
+    setVencOpen(false);
+    if (selecionado) await carregarHistorico(selecionado.id);
+  };
+
+  const diasAtraso = (venc: string | null) => {
+    if (!venc) return 0;
+    const d = Math.floor((Date.now() - new Date(venc + "T23:59:59").getTime()) / 86400000);
+    return d > 0 ? d : 0;
   };
 
   return (
