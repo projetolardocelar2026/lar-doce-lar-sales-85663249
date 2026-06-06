@@ -143,7 +143,7 @@ function CadernetaPage() {
     const [{ data: v }, { data: p }] = await Promise.all([
       supabase
         .from("vendas")
-        .select("id, data_venda, total, observacoes, forma_pagamento, status")
+        .select("id, data_venda, total, observacoes, forma_pagamento, status, vencimento_caderneta, cobranca_status")
         .eq("cliente_id", clienteId)
         .eq("forma_pagamento", "caderneta")
         .order("data_venda", { ascending: false }),
