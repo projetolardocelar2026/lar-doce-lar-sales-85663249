@@ -68,6 +68,8 @@ type Venda = {
   observacoes: string | null;
   forma_pagamento: string;
   status: string;
+  vencimento_caderneta: string | null;
+  cobranca_status: string | null;
 };
 
 type Pagamento = {
