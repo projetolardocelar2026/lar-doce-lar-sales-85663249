@@ -286,21 +286,34 @@ function CaixaPage() {
       <Dialog open={showFechar} onOpenChange={setShowFechar}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Fechar caixa</DialogTitle></DialogHeader>
-          <div className="space-y-2 text-sm">
-            <Row label="Troco inicial" v={brl(sessao?.troco_inicial || 0)} sign="+" />
-            <Row label="Vendas em dinheiro" v={brl(resumo.dinheiro)} sign="+" />
-            <Row label="Suprimentos" v={brl(resumo.suprimento)} sign="+" />
-            <Row label="Sangrias" v={brl(resumo.sangria)} sign="−" />
-            <div className="border-t pt-2 flex justify-between font-semibold">
-              <span>Esperado</span><span className="text-primary">{brl(esperado)}</span>
+          <div className="space-y-3 text-sm">
+            <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 space-y-1">
+              <div className="text-[11px] font-semibold text-primary uppercase tracking-wide mb-1">Cálculo automático do sistema</div>
+              <Row label="Fundo de troco (abertura)" v={brl(sessao?.troco_inicial || 0)} sign="+" />
+              <Row label="Vendas em dinheiro" v={brl(resumo.dinheiro)} sign="+" />
+              <Row label="Suprimentos" v={brl(resumo.suprimento)} sign="+" />
+              <Row label="Sangrias" v={brl(resumo.sangria)} sign="−" />
+              <div className="border-t border-primary/20 pt-2 flex justify-between font-semibold">
+                <span>Valor esperado na gaveta</span><span className="text-primary">{brl(esperado)}</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground pt-1">
+                ✓ O fundo de troco já está incluído. Basta contar todo o dinheiro físico da gaveta.
+              </p>
             </div>
             <div>
-              <Label className="mt-3 block">Valor contado na gaveta</Label>
-              <Input inputMode="decimal" placeholder="0,00" value={contado} onChange={(e) => setContado(e.target.value)} />
+              <Label className="block mb-1">Valor contado na gaveta (dinheiro físico total)</Label>
+              <Input
+                inputMode="decimal"
+                placeholder="0,00"
+                value={contado}
+                onChange={(e) => setContado(e.target.value)}
+                className="text-lg font-semibold h-12"
+                autoFocus
+              />
             </div>
             {contado && (
-              <div className={`p-2 rounded text-center font-semibold ${dif < 0 ? "bg-destructive/10 text-destructive" : dif > 0 ? "bg-success/10 text-success" : "bg-muted"}`}>
-                {dif === 0 ? "Sem diferença" : dif < 0 ? `Quebra de ${brl(Math.abs(dif))}` : `Sobra de ${brl(dif)}`}
+              <div className={`p-3 rounded-lg text-center font-semibold ${dif < 0 ? "bg-destructive/10 text-destructive" : dif > 0 ? "bg-success/10 text-success" : "bg-muted"}`}>
+                {dif === 0 ? "✓ Caixa bate exatamente" : dif < 0 ? `Quebra de ${brl(Math.abs(dif))}` : `Sobra de ${brl(dif)}`}
               </div>
             )}
             <div>
