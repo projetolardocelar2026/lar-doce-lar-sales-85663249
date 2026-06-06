@@ -580,6 +580,16 @@ function ProdutosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
+        <DialogContent className="max-w-3xl p-2 bg-black/95 border-0">
+          {lightbox && (
+            lightbox.match(/\.(mp4|webm|mov)$/i)
+              ? <video src={lightbox} controls autoPlay className="w-full max-h-[80vh] rounded" />
+              : <img src={lightbox} alt="" className="w-full max-h-[80vh] object-contain rounded" />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
