@@ -264,6 +264,10 @@ function PDVPage() {
         if (cErr) throw cErr;
       }
 
+      const vencCaderneta = usaCaderneta
+        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        : null;
+
       const { data: venda, error: vErr } = await supabase
         .from("vendas")
         .insert({
@@ -278,6 +282,8 @@ function PDVPage() {
           observacoes: observacoes || null,
           status: statusVenda,
           data_venda: agora,
+          vencimento_caderneta: vencCaderneta,
+          cobranca_status: usaCaderneta ? 'aberta' : 'paga',
         })
         .select("id")
         .single();

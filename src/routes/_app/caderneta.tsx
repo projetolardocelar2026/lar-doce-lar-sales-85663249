@@ -21,7 +21,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Search, Plus, HandCoins, History, AlertCircle, AlertTriangle, ShieldAlert } from "lucide-react";
+import { Search, Plus, HandCoins, History, AlertCircle, AlertTriangle, ShieldAlert, CalendarClock, Pencil } from "lucide-react";
 
 type RiscoNivel = "ok" | "atencao" | "alto" | "estourado";
 
@@ -68,6 +68,8 @@ type Venda = {
   observacoes: string | null;
   forma_pagamento: string;
   status: string;
+  vencimento_caderneta: string | null;
+  cobranca_status: string | null;
 };
 
 type Pagamento = {
@@ -112,6 +114,13 @@ function CadernetaPage() {
   const [vendaValor, setVendaValor] = useState("");
   const [vendaData, setVendaData] = useState(todayInput());
   const [vendaObs, setVendaObs] = useState("");
+  const [vendaVenc, setVendaVenc] = useState("");
+
+  // Dialog: editar vencimento
+  const [vencOpen, setVencOpen] = useState(false);
+  const [vencVendaId, setVencVendaId] = useState<string | null>(null);
+  const [vencNovo, setVencNovo] = useState("");
+  const [vencMotivo, setVencMotivo] = useState("");
 
   const carregarClientes = async () => {
     setLoading(true);
@@ -134,7 +143,7 @@ function CadernetaPage() {
     const [{ data: v }, { data: p }] = await Promise.all([
       supabase
         .from("vendas")
-        .select("id, data_venda, total, observacoes, forma_pagamento, status")
+        .select("id, data_venda, total, observacoes, forma_pagamento, status, vencimento_caderneta, cobranca_status")
         .eq("cliente_id", clienteId)
         .eq("forma_pagamento", "caderneta")
         .order("data_venda", { ascending: false }),
@@ -239,6 +248,8 @@ function CadernetaPage() {
     setVendaValor("");
     setVendaData(todayInput());
     setVendaObs("");
+    const venc = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    setVendaVenc(venc.toISOString().slice(0, 10));
     setVendaOpen(true);
   };
 
@@ -269,6 +280,8 @@ function CadernetaPage() {
         status: "pendente",
         observacoes: vendaObs || "Lançamento manual de caderneta",
         atendente_id: user?.id ?? null,
+        vencimento_caderneta: vendaVenc || null,
+        cobranca_status: "aberta",
       })
       .select("id")
       .single();
@@ -276,7 +289,6 @@ function CadernetaPage() {
       toast.error("Erro ao registrar venda: " + (error?.message ?? ""));
       return;
     }
-    // item genérico para preservar histórico
     await supabase.from("itens_venda").insert({
       venda_id: venda.id,
       produto_nome: vendaObs || "Lançamento de caderneta",
@@ -294,6 +306,39 @@ function CadernetaPage() {
       .maybeSingle();
     if (data) setSelecionado(data as Cliente);
     await carregarHistorico(selecionado.id);
+  };
+
+  // ============ EDITAR VENCIMENTO ============
+  const abrirEditarVenc = (v: Venda) => {
+    setVencVendaId(v.id);
+    setVencNovo(v.vencimento_caderneta ?? new Date().toISOString().slice(0, 10));
+    setVencMotivo("");
+    setVencOpen(true);
+  };
+
+  const salvarNovoVenc = async () => {
+    if (!vencVendaId || !vencNovo) {
+      toast.error("Informe a nova data");
+      return;
+    }
+    const { error } = await supabase.rpc("editar_vencimento_caderneta", {
+      _venda: vencVendaId,
+      _novo: vencNovo,
+      _motivo: vencMotivo || undefined,
+    });
+    if (error) {
+      toast.error("Erro ao alterar vencimento: " + error.message);
+      return;
+    }
+    toast.success("Vencimento atualizado");
+    setVencOpen(false);
+    if (selecionado) await carregarHistorico(selecionado.id);
+  };
+
+  const diasAtraso = (venc: string | null) => {
+    if (!venc) return 0;
+    const d = Math.floor((Date.now() - new Date(venc + "T23:59:59").getTime()) / 86400000);
+    return d > 0 ? d : 0;
   };
 
   return (
@@ -563,24 +608,56 @@ function CadernetaPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Data</TableHead>
+                            <TableHead>Vencimento</TableHead>
+                            <TableHead>Status</TableHead>
                             <TableHead>Observação</TableHead>
                             <TableHead className="text-right">Valor</TableHead>
+                            <TableHead></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {vendas.map((v) => (
-                            <TableRow key={v.id}>
-                              <TableCell className="whitespace-nowrap">
-                                {fmtDate(v.data_venda)}
-                              </TableCell>
-                              <TableCell className="text-muted-foreground">
-                                {v.observacoes || "—"}
-                              </TableCell>
-                              <TableCell className="text-right font-medium">
-                                {brl(v.total)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                          {vendas.map((v) => {
+                            const atraso = diasAtraso(v.vencimento_caderneta);
+                            const paga = v.status === "paga" || v.cobranca_status === "paga";
+                            const statusLabel = paga ? "Paga" : atraso > 0 ? "Vencida" : "Aberta";
+                            const statusVar: "default" | "destructive" | "secondary" =
+                              paga ? "secondary" : atraso > 0 ? "destructive" : "default";
+                            return (
+                              <TableRow key={v.id}>
+                                <TableCell className="whitespace-nowrap">
+                                  {fmtDate(v.data_venda)}
+                                </TableCell>
+                                <TableCell className="whitespace-nowrap text-sm">
+                                  {v.vencimento_caderneta ? (
+                                    <div>
+                                      <div>{fmtDateOnly(v.vencimento_caderneta)}</div>
+                                      {!paga && atraso > 0 && (
+                                        <div className="text-[10px] text-destructive">
+                                          {atraso} {atraso === 1 ? "dia em atraso" : "dias em atraso"}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : "—"}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={statusVar}>{statusLabel}</Badge>
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {v.observacoes || "—"}
+                                </TableCell>
+                                <TableCell className="text-right font-medium">
+                                  {brl(v.total)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {!paga && (
+                                    <Button size="icon" variant="ghost" onClick={() => abrirEditarVenc(v)} title="Alterar vencimento">
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     )}
@@ -733,6 +810,17 @@ function CadernetaPage() {
               </div>
             </div>
             <div>
+              <Label>Vencimento</Label>
+              <Input
+                type="date"
+                value={vendaVenc}
+                onChange={(e) => setVendaVenc(e.target.value)}
+              />
+              <div className="text-xs text-muted-foreground mt-1">
+                Padrão: 30 dias após a venda. Pode ser ajustado depois.
+              </div>
+            </div>
+            <div>
               <Label>Descrição / observação</Label>
               <Textarea
                 rows={2}
@@ -747,6 +835,41 @@ function CadernetaPage() {
               Cancelar
             </Button>
             <Button onClick={registrarVendaPrazo}>Lançar na caderneta</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: editar vencimento */}
+      <Dialog open={vencOpen} onOpenChange={setVencOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5" /> Alterar vencimento
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nova data de vencimento</Label>
+              <Input
+                type="date"
+                value={vencNovo}
+                onChange={(e) => setVencNovo(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label>Motivo da alteração</Label>
+              <Textarea
+                rows={2}
+                value={vencMotivo}
+                onChange={(e) => setVencMotivo(e.target.value)}
+                placeholder="Ex.: Cliente pediu mais prazo"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVencOpen(false)}>Cancelar</Button>
+            <Button onClick={salvarNovoVenc}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
