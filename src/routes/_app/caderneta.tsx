@@ -608,24 +608,56 @@ function CadernetaPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Data</TableHead>
+                            <TableHead>Vencimento</TableHead>
+                            <TableHead>Status</TableHead>
                             <TableHead>Observação</TableHead>
                             <TableHead className="text-right">Valor</TableHead>
+                            <TableHead></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {vendas.map((v) => (
-                            <TableRow key={v.id}>
-                              <TableCell className="whitespace-nowrap">
-                                {fmtDate(v.data_venda)}
-                              </TableCell>
-                              <TableCell className="text-muted-foreground">
-                                {v.observacoes || "—"}
-                              </TableCell>
-                              <TableCell className="text-right font-medium">
-                                {brl(v.total)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                          {vendas.map((v) => {
+                            const atraso = diasAtraso(v.vencimento_caderneta);
+                            const paga = v.status === "paga" || v.cobranca_status === "paga";
+                            const statusLabel = paga ? "Paga" : atraso > 0 ? "Vencida" : "Aberta";
+                            const statusVar: "default" | "destructive" | "secondary" =
+                              paga ? "secondary" : atraso > 0 ? "destructive" : "default";
+                            return (
+                              <TableRow key={v.id}>
+                                <TableCell className="whitespace-nowrap">
+                                  {fmtDate(v.data_venda)}
+                                </TableCell>
+                                <TableCell className="whitespace-nowrap text-sm">
+                                  {v.vencimento_caderneta ? (
+                                    <div>
+                                      <div>{fmtDateOnly(v.vencimento_caderneta)}</div>
+                                      {!paga && atraso > 0 && (
+                                        <div className="text-[10px] text-destructive">
+                                          {atraso} {atraso === 1 ? "dia em atraso" : "dias em atraso"}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : "—"}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={statusVar}>{statusLabel}</Badge>
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {v.observacoes || "—"}
+                                </TableCell>
+                                <TableCell className="text-right font-medium">
+                                  {brl(v.total)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {!paga && (
+                                    <Button size="icon" variant="ghost" onClick={() => abrirEditarVenc(v)} title="Alterar vencimento">
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     )}
