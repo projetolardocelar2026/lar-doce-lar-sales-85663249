@@ -107,6 +107,30 @@ function ProdutosPage() {
     if (editing) loadMidias(editing.id);
   }
 
+  async function definirComoPrincipal(url: string) {
+    if (!editing) return;
+    const { error } = await supabase.from("produtos").update({ imagem_url: url }).eq("id", editing.id);
+    if (error) return toast.error(error.message);
+    setImgPreview(url);
+    setEditing({ ...editing, imagem_url: url });
+    toast.success("Foto principal definida");
+    load();
+  }
+
+  async function moverMidia(id: string, dir: -1 | 1) {
+    const idx = midias.findIndex((m) => m.id === id);
+    const novo = idx + dir;
+    if (idx < 0 || novo < 0 || novo >= midias.length) return;
+    const a = midias[idx], b = midias[novo];
+    await Promise.all([
+      supabase.from("produto_midias").update({ ordem: b.ordem }).eq("id", a.id),
+      supabase.from("produto_midias").update({ ordem: a.ordem }).eq("id", b.id),
+    ]);
+    if (editing) loadMidias(editing.id);
+  }
+
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
 
   async function load() {
     setLoading(true);
