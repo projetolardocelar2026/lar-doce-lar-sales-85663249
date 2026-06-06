@@ -53,6 +53,36 @@ export type Database = {
         }
         Relationships: []
       }
+      caderneta_vencimento_historico: {
+        Row: {
+          created_at: string
+          id: string
+          motivo: string | null
+          usuario_id: string | null
+          vencimento_anterior: string | null
+          vencimento_novo: string
+          venda_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          usuario_id?: string | null
+          vencimento_anterior?: string | null
+          vencimento_novo: string
+          venda_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          usuario_id?: string | null
+          vencimento_anterior?: string | null
+          vencimento_novo?: string
+          venda_id?: string
+        }
+        Relationships: []
+      }
       caixa_movimentos: {
         Row: {
           created_at: string
@@ -801,6 +831,7 @@ export type Database = {
         Row: {
           atendente_id: string | null
           cliente_id: string | null
+          cobranca_status: string
           created_at: string
           credito_usado: number
           data_venda: string
@@ -812,10 +843,12 @@ export type Database = {
           status: Database["public"]["Enums"]["status_venda"]
           taxa: number
           total: number
+          vencimento_caderneta: string | null
         }
         Insert: {
           atendente_id?: string | null
           cliente_id?: string | null
+          cobranca_status?: string
           created_at?: string
           credito_usado?: number
           data_venda?: string
@@ -827,10 +860,12 @@ export type Database = {
           status?: Database["public"]["Enums"]["status_venda"]
           taxa?: number
           total?: number
+          vencimento_caderneta?: string | null
         }
         Update: {
           atendente_id?: string | null
           cliente_id?: string | null
+          cobranca_status?: string
           created_at?: string
           credito_usado?: number
           data_venda?: string
@@ -842,6 +877,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["status_venda"]
           taxa?: number
           total?: number
+          vencimento_caderneta?: string | null
         }
         Relationships: [
           {
@@ -860,6 +896,10 @@ export type Database = {
     Functions: {
       abrir_caixa: { Args: { _troco: number }; Returns: string }
       cancelar_venda: { Args: { _venda_id: string }; Returns: undefined }
+      editar_vencimento_caderneta: {
+        Args: { _motivo?: string; _novo: string; _venda: string }
+        Returns: undefined
+      }
       fechar_caixa: {
         Args: { _obs?: string; _sessao: string; _valor_contado: number }
         Returns: {
