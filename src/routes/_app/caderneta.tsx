@@ -324,7 +324,7 @@ function CadernetaPage() {
     const { error } = await supabase.rpc("editar_vencimento_caderneta", {
       _venda: vencVendaId,
       _novo: vencNovo,
-      _motivo: vencMotivo || null,
+      _motivo: vencMotivo || undefined,
     });
     if (error) {
       toast.error("Erro ao alterar vencimento: " + error.message);
