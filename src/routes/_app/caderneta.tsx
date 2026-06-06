@@ -114,6 +114,13 @@ function CadernetaPage() {
   const [vendaValor, setVendaValor] = useState("");
   const [vendaData, setVendaData] = useState(todayInput());
   const [vendaObs, setVendaObs] = useState("");
+  const [vendaVenc, setVendaVenc] = useState("");
+
+  // Dialog: editar vencimento
+  const [vencOpen, setVencOpen] = useState(false);
+  const [vencVendaId, setVencVendaId] = useState<string | null>(null);
+  const [vencNovo, setVencNovo] = useState("");
+  const [vencMotivo, setVencMotivo] = useState("");
 
   const carregarClientes = async () => {
     setLoading(true);
