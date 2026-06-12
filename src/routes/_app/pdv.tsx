@@ -164,7 +164,7 @@ function PDVPage() {
         return cur.map((i) => i.produto_id === p.id ? { ...i, quantidade: i.quantidade + 1 } : i);
       }
       return [...cur, {
-        produto_id: p.id, nome: p.nome, preco: Number(p.preco),
+        produto_id: p.id, nome: p.nome, preco: precoVigente(p).preco,
         quantidade: 1, estoque: ignoreStock ? Math.max(p.estoque, 9999) : p.estoque, categoria_id: p.categoria_id,
       }];
     });
