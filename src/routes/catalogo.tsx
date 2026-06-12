@@ -59,7 +59,11 @@ function CatalogoPage() {
   );
 
   function pedir(p: Produto) {
-    const msg = `Olá! Tenho interesse em *${p.nome}* — ${brl(p.preco)}.`;
+    const vig = precoVigente(p);
+    const linha = vig.emPromocao
+      ? `${brl(vig.preco)} (oferta! antes ${brl(vig.precoOriginal)})`
+      : brl(vig.preco);
+    const msg = `Olá! Tenho interesse em *${p.nome}* — ${linha}.`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
   }
 
