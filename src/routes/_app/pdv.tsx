@@ -106,7 +106,7 @@ function PDVPage() {
   const loadData = async () => {
     setLoading(true);
     const [{ data: p }, { data: c }, { data: cl }, { data: sess }] = await Promise.all([
-      supabase.from("produtos").select("id,nome,preco,estoque,imagem_url,categoria_id,ativo").eq("ativo", true).order("nome"),
+      supabase.from("produtos").select("id,nome,preco,estoque,imagem_url,categoria_id,ativo,preco_promocional,promo_inicio,promo_fim").eq("ativo", true).order("nome"),
       supabase.from("categorias").select("id,nome").eq("ativa", true).order("ordem"),
       supabase.from("clientes").select("id,nome,telefone,saldo_devedor,limite_caderneta,saldo_credito").eq("ativo", true).order("nome"),
       user ? supabase.from("caixa_sessoes").select("id").eq("operador_id", user.id).eq("status", "aberta").maybeSingle() : Promise.resolve({ data: null } as any),
