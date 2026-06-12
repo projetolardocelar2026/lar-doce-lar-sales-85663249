@@ -16,6 +16,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { brl, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
+import { precoVigente } from "@/lib/preco";
 import { toast } from "sonner";
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, X, Check, UserPlus,
