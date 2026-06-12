@@ -514,6 +514,7 @@ function PDVPage() {
               {filtered.map((p) => {
                 const inCart = cart.find((i) => i.produto_id === p.id)?.quantidade ?? 0;
                 const pulse = pulseId === p.id;
+                const vig = precoVigente(p);
                 return (
                   <button
                     key={p.id}
@@ -526,6 +527,11 @@ function PDVPage() {
                         {inCart}
                       </div>
                     )}
+                    {vig.emPromocao && (
+                      <div className="absolute top-1.5 left-1.5 z-10 px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold shadow-md">
+                        PROMO
+                      </div>
+                    )}
                     <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
                       {p.imagem_url ? (
                         <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover" />
@@ -536,7 +542,12 @@ function PDVPage() {
                     <div className="p-2.5">
                       <div className="text-sm font-medium line-clamp-2 min-h-[2.5rem]">{p.nome}</div>
                       <div className="flex items-baseline justify-between mt-1">
-                        <span className="text-base font-bold text-primary">{brl(p.preco)}</span>
+                        <div className="flex flex-col">
+                          {vig.emPromocao && (
+                            <span className="text-[10px] text-muted-foreground line-through leading-none">{brl(vig.precoOriginal)}</span>
+                          )}
+                          <span className={"text-base font-bold " + (vig.emPromocao ? "text-accent" : "text-primary")}>{brl(vig.preco)}</span>
+                        </div>
                         <span className={"text-xs " + (p.estoque <= 0 ? "text-destructive" : "text-muted-foreground")}>
                           Est: {p.estoque}
                         </span>
