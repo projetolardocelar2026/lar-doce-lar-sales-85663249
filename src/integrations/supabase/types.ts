@@ -741,6 +741,9 @@ export type Database = {
           nome: string
           preco: number
           preco_custo: number | null
+          preco_promocional: number | null
+          promo_fim: string | null
+          promo_inicio: string | null
           updated_at: string
         }
         Insert: {
@@ -757,6 +760,9 @@ export type Database = {
           nome: string
           preco?: number
           preco_custo?: number | null
+          preco_promocional?: number | null
+          promo_fim?: string | null
+          promo_inicio?: string | null
           updated_at?: string
         }
         Update: {
@@ -773,6 +779,9 @@ export type Database = {
           nome?: string
           preco?: number
           preco_custo?: number | null
+          preco_promocional?: number | null
+          promo_fim?: string | null
+          promo_inicio?: string | null
           updated_at?: string
         }
         Relationships: [
