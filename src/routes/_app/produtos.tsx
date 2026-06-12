@@ -463,6 +463,50 @@ function ProdutosPage() {
               />
             </div>
 
+            <div className="rounded-xl border-2 border-accent/30 p-3 space-y-3 bg-accent/5">
+              <div>
+                <div className="font-semibold text-sm flex items-center gap-2">🏷️ Promoção (opcional)</div>
+                <div className="text-xs text-muted-foreground">
+                  Quando preenchida, o preço promocional é usado automaticamente dentro do período definido. Fora do período, volta ao preço normal.
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label>Preço promocional</Label>
+                  <Input
+                    inputMode="decimal"
+                    value={form.preco_promocional}
+                    onChange={(e) => setForm({ ...form, preco_promocional: e.target.value })}
+                    placeholder="0,00"
+                  />
+                </div>
+                <div>
+                  <Label>Início</Label>
+                  <Input
+                    type="date"
+                    value={form.promo_inicio}
+                    onChange={(e) => setForm({ ...form, promo_inicio: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Término</Label>
+                  <Input
+                    type="date"
+                    value={form.promo_fim}
+                    onChange={(e) => setForm({ ...form, promo_fim: e.target.value })}
+                  />
+                </div>
+              </div>
+              {form.preco_promocional && form.preco && (
+                <div className="text-xs text-muted-foreground">
+                  Economia: <strong className="text-success">
+                    {brl(Math.max(0, parseFloat(form.preco.replace(",", ".") || "0") - parseFloat(form.preco_promocional.replace(",", ".") || "0")))}
+                  </strong>
+                  {form.promo_inicio && form.promo_fim && ` · de ${form.promo_inicio} até ${form.promo_fim}`}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
