@@ -25,6 +25,7 @@ export const Route = createFileRoute("/catalogo")({
 type Produto = {
   id: string; nome: string; descricao: string | null; preco: number;
   estoque: number; imagem_url: string | null; categoria_id: string | null; destaque: boolean;
+  preco_promocional: number | null; promo_inicio: string | null; promo_fim: string | null;
 };
 type Categoria = { id: string; nome: string };
 
