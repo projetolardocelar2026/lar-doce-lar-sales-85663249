@@ -182,6 +182,9 @@ function ProdutosPage() {
       codigo_barras: p.codigo_barras ?? "",
       destaque: p.destaque,
       ativo: p.ativo,
+      preco_promocional: p.preco_promocional != null ? String(p.preco_promocional) : "",
+      promo_inicio: p.promo_inicio ?? "",
+      promo_fim: p.promo_fim ?? "",
     });
     setImgFile(null);
     setImgPreview(p.imagem_url);
