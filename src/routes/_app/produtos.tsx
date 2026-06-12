@@ -316,6 +316,7 @@ function ProdutosPage() {
             <div className="divide-y">
               {filtered.map((p) => {
                 const baixo = p.estoque <= (p.estoque_minimo ?? 0);
+                const vig = precoVigente(p);
                 return (
                   <div key={p.id} className="flex items-center gap-3 p-3 sm:p-4 hover:bg-muted/40 transition-colors">
                     <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden flex items-center justify-center shrink-0">
@@ -330,6 +331,7 @@ function ProdutosPage() {
                         <span className="font-medium truncate">{p.nome}</span>
                         {!p.ativo && <Badge variant="secondary">Inativo</Badge>}
                         {p.destaque && <Badge>Destaque</Badge>}
+                        {vig.emPromocao && <Badge className="bg-accent text-accent-foreground">PROMOÇÃO</Badge>}
                         {baixo && <Badge variant="destructive">Estoque baixo</Badge>}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
@@ -337,7 +339,14 @@ function ProdutosPage() {
                       </div>
                     </div>
                     <div className="text-right hidden sm:block">
-                      <div className="font-semibold text-primary">{brl(p.preco)}</div>
+                      {vig.emPromocao ? (
+                        <>
+                          <div className="text-xs text-muted-foreground line-through">{brl(vig.precoOriginal)}</div>
+                          <div className="font-semibold text-accent">{brl(vig.preco)}</div>
+                        </>
+                      ) : (
+                        <div className="font-semibold text-primary">{brl(p.preco)}</div>
+                      )}
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => openEdit(p)}>
                       <Pencil className="h-4 w-4" />
