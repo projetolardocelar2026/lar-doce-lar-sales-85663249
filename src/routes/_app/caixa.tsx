@@ -179,12 +179,22 @@ function CaixaPage() {
             <Card>
               <CardHeader><CardTitle>Conferência (Dinheiro físico)</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <Row label="Troco Inicial" v={brl(sessao.troco_inicial)} sign="+" />
-                <Row label="Vendas em Dinheiro" v={brl(resumo.dinheiro)} sign="+" />
-                <Row label="Suprimentos" v={brl(resumo.suprimento)} sign="+" />
-                <Row label="Sangrias" v={brl(resumo.sangria)} sign="−" />
-                <div className="border-t pt-2 flex justify-between font-semibold">
-                  <span>Saldo Esperado em caixa</span><span className="text-primary">{brl(esperado)}</span>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Fundo de Troco Inicial (não conta como faturamento)</span>
+                  <strong>{brl(sessao.troco_inicial)}</strong>
+                </div>
+                <div className="border-t pt-2 space-y-1">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Movimento operacional</div>
+                  <Row label="Dinheiro Recebido nas Vendas" v={brl(resumo.dinheiro)} sign="+" />
+                  <Row label="Suprimentos" v={brl(resumo.suprimento)} sign="+" />
+                  <Row label="Sangrias" v={brl(resumo.sangria)} sign="−" />
+                  <div className="flex justify-between font-semibold">
+                    <span>Valor Operacional em Caixa</span>
+                    <span className="text-success">{brl(resumo.dinheiro + resumo.suprimento - resumo.sangria)}</span>
+                  </div>
+                </div>
+                <div className="border-t pt-2 flex justify-between font-bold">
+                  <span>Total esperado na gaveta (Fundo + Operacional)</span><span className="text-primary">{brl(esperado)}</span>
                 </div>
                 <p className="text-xs text-muted-foreground pt-1">PIX e Cartão são conferidos separadamente nos seus extratos.</p>
               </CardContent>
