@@ -16,6 +16,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { brl, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
+import { precoVigente } from "@/lib/preco";
 import { toast } from "sonner";
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, X, Check, UserPlus,
@@ -36,6 +37,9 @@ type Produto = {
   imagem_url: string | null;
   categoria_id: string | null;
   ativo: boolean;
+  preco_promocional: number | null;
+  promo_inicio: string | null;
+  promo_fim: string | null;
 };
 type Categoria = { id: string; nome: string };
 type Cliente = { id: string; nome: string; telefone: string | null; saldo_devedor: number; limite_caderneta: number; saldo_credito: number };
@@ -103,7 +107,7 @@ function PDVPage() {
   const loadData = async () => {
     setLoading(true);
     const [{ data: p }, { data: c }, { data: cl }, { data: sess }] = await Promise.all([
-      supabase.from("produtos").select("id,nome,preco,estoque,imagem_url,categoria_id,ativo").eq("ativo", true).order("nome"),
+      supabase.from("produtos").select("id,nome,preco,estoque,imagem_url,categoria_id,ativo,preco_promocional,promo_inicio,promo_fim").eq("ativo", true).order("nome"),
       supabase.from("categorias").select("id,nome").eq("ativa", true).order("ordem"),
       supabase.from("clientes").select("id,nome,telefone,saldo_devedor,limite_caderneta,saldo_credito").eq("ativo", true).order("nome"),
       user ? supabase.from("caixa_sessoes").select("id").eq("operador_id", user.id).eq("status", "aberta").maybeSingle() : Promise.resolve({ data: null } as any),
@@ -161,7 +165,7 @@ function PDVPage() {
         return cur.map((i) => i.produto_id === p.id ? { ...i, quantidade: i.quantidade + 1 } : i);
       }
       return [...cur, {
-        produto_id: p.id, nome: p.nome, preco: Number(p.preco),
+        produto_id: p.id, nome: p.nome, preco: precoVigente(p).preco,
         quantidade: 1, estoque: ignoreStock ? Math.max(p.estoque, 9999) : p.estoque, categoria_id: p.categoria_id,
       }];
     });
@@ -510,6 +514,7 @@ function PDVPage() {
               {filtered.map((p) => {
                 const inCart = cart.find((i) => i.produto_id === p.id)?.quantidade ?? 0;
                 const pulse = pulseId === p.id;
+                const vig = precoVigente(p);
                 return (
                   <button
                     key={p.id}
@@ -522,6 +527,11 @@ function PDVPage() {
                         {inCart}
                       </div>
                     )}
+                    {vig.emPromocao && (
+                      <div className="absolute top-1.5 left-1.5 z-10 px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold shadow-md">
+                        PROMO
+                      </div>
+                    )}
                     <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
                       {p.imagem_url ? (
                         <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover" />
@@ -532,7 +542,12 @@ function PDVPage() {
                     <div className="p-2.5">
                       <div className="text-sm font-medium line-clamp-2 min-h-[2.5rem]">{p.nome}</div>
                       <div className="flex items-baseline justify-between mt-1">
-                        <span className="text-base font-bold text-primary">{brl(p.preco)}</span>
+                        <div className="flex flex-col">
+                          {vig.emPromocao && (
+                            <span className="text-[10px] text-muted-foreground line-through leading-none">{brl(vig.precoOriginal)}</span>
+                          )}
+                          <span className={"text-base font-bold " + (vig.emPromocao ? "text-accent" : "text-primary")}>{brl(vig.preco)}</span>
+                        </div>
                         <span className={"text-xs " + (p.estoque <= 0 ? "text-destructive" : "text-muted-foreground")}>
                           Est: {p.estoque}
                         </span>

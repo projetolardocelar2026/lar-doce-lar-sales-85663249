@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff, Video, Image as ImageIcon, X, Star, ArrowLeft, ArrowRight, Eye } from "lucide-react";
 import { brl } from "@/lib/format";
+import { precoVigente } from "@/lib/preco";
 
 export const Route = createFileRoute("/_app/produtos")({
   component: ProdutosPage,
@@ -38,6 +39,9 @@ type Produto = {
   codigo_barras: string | null;
   destaque: boolean;
   ativo: boolean;
+  preco_promocional: number | null;
+  promo_inicio: string | null;
+  promo_fim: string | null;
 };
 
 const empty = {
@@ -51,6 +55,9 @@ const empty = {
   codigo_barras: "",
   destaque: false,
   ativo: true,
+  preco_promocional: "",
+  promo_inicio: "",
+  promo_fim: "",
 };
 
 function ProdutosPage() {
@@ -176,6 +183,9 @@ function ProdutosPage() {
       codigo_barras: p.codigo_barras ?? "",
       destaque: p.destaque,
       ativo: p.ativo,
+      preco_promocional: p.preco_promocional != null ? String(p.preco_promocional) : "",
+      promo_inicio: p.promo_inicio ?? "",
+      promo_fim: p.promo_fim ?? "",
     });
     setImgFile(null);
     setImgPreview(p.imagem_url);
@@ -210,6 +220,7 @@ function ProdutosPage() {
     setSaving(true);
     try {
       const imagem_url = await uploadImage();
+      const promoVal = form.preco_promocional ? parseFloat(form.preco_promocional.replace(",", ".")) : null;
       const payload = {
         nome: form.nome.trim(),
         descricao: form.descricao.trim() || null,
@@ -222,6 +233,9 @@ function ProdutosPage() {
         destaque: form.destaque,
         ativo: form.ativo,
         imagem_url,
+        preco_promocional: promoVal && promoVal > 0 ? promoVal : null,
+        promo_inicio: form.promo_inicio || null,
+        promo_fim: form.promo_fim || null,
       };
       const { error } = editing
         ? await supabase.from("produtos").update(payload).eq("id", editing.id)
@@ -303,6 +317,7 @@ function ProdutosPage() {
             <div className="divide-y">
               {filtered.map((p) => {
                 const baixo = p.estoque <= (p.estoque_minimo ?? 0);
+                const vig = precoVigente(p);
                 return (
                   <div key={p.id} className="flex items-center gap-3 p-3 sm:p-4 hover:bg-muted/40 transition-colors">
                     <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden flex items-center justify-center shrink-0">
@@ -317,6 +332,7 @@ function ProdutosPage() {
                         <span className="font-medium truncate">{p.nome}</span>
                         {!p.ativo && <Badge variant="secondary">Inativo</Badge>}
                         {p.destaque && <Badge>Destaque</Badge>}
+                        {vig.emPromocao && <Badge className="bg-accent text-accent-foreground">PROMOÇÃO</Badge>}
                         {baixo && <Badge variant="destructive">Estoque baixo</Badge>}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
@@ -324,7 +340,14 @@ function ProdutosPage() {
                       </div>
                     </div>
                     <div className="text-right hidden sm:block">
-                      <div className="font-semibold text-primary">{brl(p.preco)}</div>
+                      {vig.emPromocao ? (
+                        <>
+                          <div className="text-xs text-muted-foreground line-through">{brl(vig.precoOriginal)}</div>
+                          <div className="font-semibold text-accent">{brl(vig.preco)}</div>
+                        </>
+                      ) : (
+                        <div className="font-semibold text-primary">{brl(p.preco)}</div>
+                      )}
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => openEdit(p)}>
                       <Pencil className="h-4 w-4" />
@@ -448,6 +471,50 @@ function ProdutosPage() {
                 onChange={(e) => setForm({ ...form, codigo_barras: e.target.value })}
                 placeholder="Opcional"
               />
+            </div>
+
+            <div className="rounded-xl border-2 border-accent/30 p-3 space-y-3 bg-accent/5">
+              <div>
+                <div className="font-semibold text-sm flex items-center gap-2">🏷️ Promoção (opcional)</div>
+                <div className="text-xs text-muted-foreground">
+                  Quando preenchida, o preço promocional é usado automaticamente dentro do período definido. Fora do período, volta ao preço normal.
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label>Preço promocional</Label>
+                  <Input
+                    inputMode="decimal"
+                    value={form.preco_promocional}
+                    onChange={(e) => setForm({ ...form, preco_promocional: e.target.value })}
+                    placeholder="0,00"
+                  />
+                </div>
+                <div>
+                  <Label>Início</Label>
+                  <Input
+                    type="date"
+                    value={form.promo_inicio}
+                    onChange={(e) => setForm({ ...form, promo_inicio: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Término</Label>
+                  <Input
+                    type="date"
+                    value={form.promo_fim}
+                    onChange={(e) => setForm({ ...form, promo_fim: e.target.value })}
+                  />
+                </div>
+              </div>
+              {form.preco_promocional && form.preco && (
+                <div className="text-xs text-muted-foreground">
+                  Economia: <strong className="text-success">
+                    {brl(Math.max(0, parseFloat(form.preco.replace(",", ".") || "0") - parseFloat(form.preco_promocional.replace(",", ".") || "0")))}
+                  </strong>
+                  {form.promo_inicio && form.promo_fim && ` · de ${form.promo_inicio} até ${form.promo_fim}`}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
