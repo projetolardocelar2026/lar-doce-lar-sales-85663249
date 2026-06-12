@@ -102,24 +102,43 @@ function CatalogoPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((p) => (
-              <Card key={p.id} className="overflow-hidden bg-gradient-card hover:shadow-elevated transition-smooth rounded-2xl">
-                <MediaCarousel midias={midias[p.id] ?? []} fallback={p.imagem_url} alt={p.nome} rounded="rounded-none" />
-                <CardContent className="p-4 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bold leading-tight">{p.nome}</h3>
-                    {p.destaque && <Badge className="bg-accent text-accent-foreground shrink-0">Destaque</Badge>}
-                  </div>
-                  {p.descricao && <p className="text-sm text-muted-foreground line-clamp-2">{p.descricao}</p>}
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="text-2xl font-bold text-primary">{brl(p.preco)}</div>
-                    <Button variant="hero" onClick={() => pedir(p)}>
-                      <MessageCircle className="h-4 w-4" /> Pedir
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {filtered.map((p) => {
+              const vig = precoVigente(p);
+              const fmtDate = (s: string | null) => s ? new Date(s + "T00:00:00").toLocaleDateString("pt-BR") : "";
+              return (
+                <Card key={p.id} className="overflow-hidden bg-gradient-card hover:shadow-elevated transition-smooth rounded-2xl relative">
+                  {vig.emPromocao && (
+                    <div className="absolute top-3 left-3 z-10 px-3 py-1 rounded-full bg-accent text-accent-foreground text-xs font-bold shadow-lg">
+                      🏷️ PROMOÇÃO
+                    </div>
+                  )}
+                  <MediaCarousel midias={midias[p.id] ?? []} fallback={p.imagem_url} alt={p.nome} rounded="rounded-none" />
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-bold leading-tight">{p.nome}</h3>
+                      {p.destaque && <Badge className="bg-accent text-accent-foreground shrink-0">Destaque</Badge>}
+                    </div>
+                    {p.descricao && <p className="text-sm text-muted-foreground line-clamp-2">{p.descricao}</p>}
+                    {vig.emPromocao && (vig.inicio || vig.fim) && (
+                      <p className="text-[11px] text-accent font-medium">
+                        Oferta {vig.inicio ? `de ${fmtDate(vig.inicio)}` : ""} {vig.fim ? `até ${fmtDate(vig.fim)}` : ""}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between pt-1">
+                      <div>
+                        {vig.emPromocao && (
+                          <div className="text-sm text-muted-foreground line-through leading-none">{brl(vig.precoOriginal)}</div>
+                        )}
+                        <div className={"text-2xl font-bold " + (vig.emPromocao ? "text-accent" : "text-primary")}>{brl(vig.preco)}</div>
+                      </div>
+                      <Button variant="hero" onClick={() => pedir(p)}>
+                        <MessageCircle className="h-4 w-4" /> Pedir
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>
