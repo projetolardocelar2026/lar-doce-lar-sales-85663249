@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { brl, WHATSAPP_NUMBER, STORE_NAME } from "@/lib/format";
+import { precoVigente } from "@/lib/preco";
 import { Search, Package, MessageCircle } from "lucide-react";
 import { BannerSlider } from "@/components/BannerSlider";
 import { MediaCarousel, type Midia } from "@/components/MediaCarousel";
