@@ -219,6 +219,7 @@ function ProdutosPage() {
     setSaving(true);
     try {
       const imagem_url = await uploadImage();
+      const promoVal = form.preco_promocional ? parseFloat(form.preco_promocional.replace(",", ".")) : null;
       const payload = {
         nome: form.nome.trim(),
         descricao: form.descricao.trim() || null,
@@ -231,6 +232,9 @@ function ProdutosPage() {
         destaque: form.destaque,
         ativo: form.ativo,
         imagem_url,
+        preco_promocional: promoVal && promoVal > 0 ? promoVal : null,
+        promo_inicio: form.promo_inicio || null,
+        promo_fim: form.promo_fim || null,
       };
       const { error } = editing
         ? await supabase.from("produtos").update(payload).eq("id", editing.id)
