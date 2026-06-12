@@ -38,6 +38,9 @@ type Produto = {
   codigo_barras: string | null;
   destaque: boolean;
   ativo: boolean;
+  preco_promocional: number | null;
+  promo_inicio: string | null;
+  promo_fim: string | null;
 };
 
 const empty = {
@@ -51,6 +54,9 @@ const empty = {
   codigo_barras: "",
   destaque: false,
   ativo: true,
+  preco_promocional: "",
+  promo_inicio: "",
+  promo_fim: "",
 };
 
 function ProdutosPage() {
