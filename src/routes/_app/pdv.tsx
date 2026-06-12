@@ -36,6 +36,9 @@ type Produto = {
   imagem_url: string | null;
   categoria_id: string | null;
   ativo: boolean;
+  preco_promocional: number | null;
+  promo_inicio: string | null;
+  promo_fim: string | null;
 };
 type Categoria = { id: string; nome: string };
 type Cliente = { id: string; nome: string; telefone: string | null; saldo_devedor: number; limite_caderneta: number; saldo_credito: number };
