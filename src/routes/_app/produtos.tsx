@@ -275,10 +275,21 @@ function ProdutosPage() {
         if (error || !data) throw error ?? new Error("Falha ao criar produto");
         produtoId = data.id;
       }
+      let ordemInicial = editing ? midias.length : 0;
+      if (produtoId && imgFile && imagem_url) {
+        const { error } = await supabase.from("produto_midias").insert({
+          produto_id: produtoId,
+          url: imagem_url,
+          tipo: "foto",
+          ordem: ordemInicial,
+        });
+        if (error) throw error;
+        ordemInicial += 1;
+      }
       if (produtoId && pendingMidias.length > 0) {
         setUploadingMidia(true);
         const urls = await Promise.all(
-          pendingMidias.map((m, index) => uploadMidia(produtoId, m.file, m.tipo, index)),
+          pendingMidias.map((m, index) => uploadMidia(produtoId, m.file, m.tipo, ordemInicial + index)),
         );
         const primeiraFoto = urls[pendingMidias.findIndex((m) => m.tipo !== "video")];
         if (!imagem_url && primeiraFoto) {
