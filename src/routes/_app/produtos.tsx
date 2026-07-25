@@ -293,6 +293,7 @@ function ProdutosPage() {
       toast.error(e.message ?? "Erro ao salvar");
     } finally {
       setSaving(false);
+      setUploadingMidia(false);
     }
   }
 
@@ -667,8 +668,8 @@ function ProdutosPage() {
                   />
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
-                      onClick={() => { if (midiaRef.current) { midiaRef.current.accept = "image/*"; midiaRef.current.click(); } }}>
-                      <ImageIcon className="h-4 w-4" /> Foto
+                      onClick={() => { if (midiaRef.current) { midiaRef.current.accept = "image/*"; midiaRef.current.multiple = true; midiaRef.current.click(); } }}>
+                      <ImageIcon className="h-4 w-4" /> Fotos
                     </Button>
                     <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
                       onClick={() => {
