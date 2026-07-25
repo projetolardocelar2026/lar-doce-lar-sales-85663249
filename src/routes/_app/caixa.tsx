@@ -71,23 +71,24 @@ function CaixaPage() {
       .eq("sessao_caixa_id", sessaoId).neq("status", "cancelada");
     const ids = (vendas || []).map((v: any) => v.id);
     let pagosByForma: Record<string, number> = {};
+    const idsComPagamento = new Set<string>();
     if (ids.length > 0) {
       const { data: pgs } = await supabase
         .from("pagamentos_venda").select("venda_id, forma_pagamento, valor").in("venda_id", ids);
       (pgs || []).forEach((p: any) => {
+        idsComPagamento.add(p.venda_id);
         pagosByForma[p.forma_pagamento] = (pagosByForma[p.forma_pagamento] || 0) + Number(p.valor);
       });
     }
     // Vendas legacy (sem pagamentos_venda) entram pela própria venda
-    const idsComPagamento = new Set((Object.keys(pagosByForma).length ? ids : []));
     let legacy: Record<string, number> = {};
     (vendas || []).forEach((v: any) => {
-      // se há pagamentos_venda para essa venda, ela é considerada na soma acima
-      const temPag = false; // simplificação: pagamentos_venda já somados
-      if (!temPag) legacy[v.forma_pagamento] = (legacy[v.forma_pagamento] || 0) + Number(v.total);
+      if (!idsComPagamento.has(v.id)) legacy[v.forma_pagamento] = (legacy[v.forma_pagamento] || 0) + Number(v.total);
     });
-    // Como simplificamos, somamos legacy só se pagamentos_venda foi vazio
-    const usar = Object.keys(pagosByForma).length > 0 ? pagosByForma : legacy;
+    const usar = { ...legacy };
+    Object.entries(pagosByForma).forEach(([forma, valor]) => {
+      usar[forma] = (usar[forma] || 0) + valor;
+    });
     const dinheiro = usar["dinheiro"] || 0;
     const pix = usar["pix"] || 0;
     const cartao = (usar["cartao_debito"] || 0) + (usar["cartao_credito"] || 0);
