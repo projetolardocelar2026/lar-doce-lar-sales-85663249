@@ -61,7 +61,7 @@ const empty = {
 };
 
 function ProdutosPage() {
-  const { isAdmin } = useAuth();
+  const { isStaff } = useAuth();
   const [items, setItems] = useState<Produto[]>([]);
   const [cats, setCats] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +77,7 @@ function ProdutosPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const midiaRef = useRef<HTMLInputElement>(null);
   const [midias, setMidias] = useState<{ id: string; url: string; tipo: "foto"|"arte"|"video"; ordem: number }[]>([]);
+  const [pendingMidias, setPendingMidias] = useState<{ id: string; file: File; preview: string; tipo: "foto"|"arte"|"video" }[]>([]);
   const [uploadingMidia, setUploadingMidia] = useState(false);
 
   async function loadMidias(produtoId: string) {
@@ -88,24 +89,49 @@ function ProdutosPage() {
     setMidias((data ?? []) as any);
   }
 
-  async function addMidia(file: File, tipo: "foto"|"arte"|"video") {
-    if (!editing) return toast.error("Salve o produto primeiro");
+  async function uploadMidia(produtoId: string, file: File, tipo: "foto"|"arte"|"video", ordem: number) {
+    if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name}: arquivo muito grande (máx 25MB)`);
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+    const path = `${produtoId}/${crypto.randomUUID()}.${ext}`;
+    const up = await supabase.storage.from("produtos").upload(path, file, { contentType: file.type });
+    if (up.error) throw up.error;
+    const { data: pub } = supabase.storage.from("produtos").getPublicUrl(path);
+    const { error } = await supabase.from("produto_midias").insert({
+      produto_id: produtoId, url: pub.publicUrl, tipo, ordem,
+    });
+    if (error) throw error;
+    return pub.publicUrl;
+  }
+
+  async function addMidias(files: FileList | File[], tipo: "foto"|"arte"|"video") {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    const oversized = list.find((file) => file.size > 25 * 1024 * 1024);
+    if (oversized) return toast.error(`${oversized.name}: arquivo muito grande (máx 25MB)`);
+    if (!editing) {
+      setPendingMidias((cur) => [
+        ...cur,
+        ...list.map((file) => ({ id: crypto.randomUUID(), file, preview: URL.createObjectURL(file), tipo })),
+      ]);
+      toast.success(list.length > 1 ? `${list.length} mídias prontas para salvar` : "Mídia pronta para salvar");
+      return;
+    }
     if (file.size > 25 * 1024 * 1024) return toast.error("Arquivo muito grande (máx 25MB)");
     setUploadingMidia(true);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-      const path = `${editing.id}/${crypto.randomUUID()}.${ext}`;
-      const up = await supabase.storage.from("produtos").upload(path, file, { contentType: file.type });
-      if (up.error) throw up.error;
-      const { data: pub } = supabase.storage.from("produtos").getPublicUrl(path);
-      const { error } = await supabase.from("produto_midias").insert({
-        produto_id: editing.id, url: pub.publicUrl, tipo, ordem: midias.length,
-      });
-      if (error) throw error;
-      toast.success("Mídia adicionada");
+      await Promise.all(list.map((file, index) => uploadMidia(editing.id, file, tipo, midias.length + index)));
+      toast.success(list.length > 1 ? `${list.length} mídias adicionadas` : "Mídia adicionada");
       loadMidias(editing.id);
     } catch (e: any) { toast.error(e.message); }
     finally { setUploadingMidia(false); if (midiaRef.current) midiaRef.current.value = ""; }
+  }
+
+  function removePendingMidia(id: string) {
+    setPendingMidias((cur) => {
+      const item = cur.find((m) => m.id === id);
+      if (item) URL.revokeObjectURL(item.preview);
+      return cur.filter((m) => m.id !== id);
+    });
   }
 
   async function removeMidia(id: string) {
@@ -167,6 +193,8 @@ function ProdutosPage() {
     setImgFile(null);
     setImgPreview(null);
     setMidias([]);
+    pendingMidias.forEach((m) => URL.revokeObjectURL(m.preview));
+    setPendingMidias([]);
     if (fileRef.current) fileRef.current.value = "";
   }
   function openNew() { reset(); setOpen(true); }
@@ -239,8 +267,9 @@ function ProdutosPage() {
       };
       const { error } = editing
         ? await supabase.from("produtos").update(payload).eq("id", editing.id)
-        : await supabase.from("produtos").insert(payload);
+        : await supabase.from("produtos").insert(payload).select("id").single();
       if (error) throw error;
+      const produtoId = editing?.id ?? ("data" in (error ? {} : await Promise.resolve({ data: null })) ? null : null);
       toast.success(editing ? "Produto atualizado" : "Produto criado");
       setOpen(false);
       reset();
