@@ -61,7 +61,7 @@ const empty = {
 };
 
 function ProdutosPage() {
-  const { isAdmin } = useAuth();
+  const { isStaff } = useAuth();
   const [items, setItems] = useState<Produto[]>([]);
   const [cats, setCats] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +77,7 @@ function ProdutosPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const midiaRef = useRef<HTMLInputElement>(null);
   const [midias, setMidias] = useState<{ id: string; url: string; tipo: "foto"|"arte"|"video"; ordem: number }[]>([]);
+  const [pendingMidias, setPendingMidias] = useState<{ id: string; file: File; preview: string; tipo: "foto"|"arte"|"video" }[]>([]);
   const [uploadingMidia, setUploadingMidia] = useState(false);
 
   async function loadMidias(produtoId: string) {
@@ -88,24 +89,48 @@ function ProdutosPage() {
     setMidias((data ?? []) as any);
   }
 
-  async function addMidia(file: File, tipo: "foto"|"arte"|"video") {
-    if (!editing) return toast.error("Salve o produto primeiro");
-    if (file.size > 25 * 1024 * 1024) return toast.error("Arquivo muito grande (máx 25MB)");
+  async function uploadMidia(produtoId: string, file: File, tipo: "foto"|"arte"|"video", ordem: number) {
+    if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name}: arquivo muito grande (máx 25MB)`);
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+    const path = `${produtoId}/${crypto.randomUUID()}.${ext}`;
+    const up = await supabase.storage.from("produtos").upload(path, file, { contentType: file.type });
+    if (up.error) throw up.error;
+    const { data: pub } = supabase.storage.from("produtos").getPublicUrl(path);
+    const { error } = await supabase.from("produto_midias").insert({
+      produto_id: produtoId, url: pub.publicUrl, tipo, ordem,
+    });
+    if (error) throw error;
+    return pub.publicUrl;
+  }
+
+  async function addMidias(files: FileList | File[], tipo: "foto"|"arte"|"video") {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    const oversized = list.find((file) => file.size > 25 * 1024 * 1024);
+    if (oversized) return toast.error(`${oversized.name}: arquivo muito grande (máx 25MB)`);
+    if (!editing) {
+      setPendingMidias((cur) => [
+        ...cur,
+        ...list.map((file) => ({ id: crypto.randomUUID(), file, preview: URL.createObjectURL(file), tipo })),
+      ]);
+      toast.success(list.length > 1 ? `${list.length} mídias prontas para salvar` : "Mídia pronta para salvar");
+      return;
+    }
     setUploadingMidia(true);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-      const path = `${editing.id}/${crypto.randomUUID()}.${ext}`;
-      const up = await supabase.storage.from("produtos").upload(path, file, { contentType: file.type });
-      if (up.error) throw up.error;
-      const { data: pub } = supabase.storage.from("produtos").getPublicUrl(path);
-      const { error } = await supabase.from("produto_midias").insert({
-        produto_id: editing.id, url: pub.publicUrl, tipo, ordem: midias.length,
-      });
-      if (error) throw error;
-      toast.success("Mídia adicionada");
+      await Promise.all(list.map((file, index) => uploadMidia(editing.id, file, tipo, midias.length + index)));
+      toast.success(list.length > 1 ? `${list.length} mídias adicionadas` : "Mídia adicionada");
       loadMidias(editing.id);
     } catch (e: any) { toast.error(e.message); }
     finally { setUploadingMidia(false); if (midiaRef.current) midiaRef.current.value = ""; }
+  }
+
+  function removePendingMidia(id: string) {
+    setPendingMidias((cur) => {
+      const item = cur.find((m) => m.id === id);
+      if (item) URL.revokeObjectURL(item.preview);
+      return cur.filter((m) => m.id !== id);
+    });
   }
 
   async function removeMidia(id: string) {
@@ -167,10 +192,14 @@ function ProdutosPage() {
     setImgFile(null);
     setImgPreview(null);
     setMidias([]);
+    pendingMidias.forEach((m) => URL.revokeObjectURL(m.preview));
+    setPendingMidias([]);
     if (fileRef.current) fileRef.current.value = "";
   }
   function openNew() { reset(); setOpen(true); }
   function openEdit(p: Produto) {
+    pendingMidias.forEach((m) => URL.revokeObjectURL(m.preview));
+    setPendingMidias([]);
     setEditing(p);
     setForm({
       nome: p.nome,
@@ -237,10 +266,36 @@ function ProdutosPage() {
         promo_inicio: form.promo_inicio || null,
         promo_fim: form.promo_fim || null,
       };
-      const { error } = editing
-        ? await supabase.from("produtos").update(payload).eq("id", editing.id)
-        : await supabase.from("produtos").insert(payload);
-      if (error) throw error;
+      let produtoId = editing?.id ?? null;
+      if (editing) {
+        const { error } = await supabase.from("produtos").update(payload).eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from("produtos").insert(payload).select("id,imagem_url").single();
+        if (error || !data) throw error ?? new Error("Falha ao criar produto");
+        produtoId = data.id;
+      }
+      let ordemInicial = editing ? midias.length : 0;
+      if (produtoId && imgFile && imagem_url) {
+        const { error } = await supabase.from("produto_midias").insert({
+          produto_id: produtoId,
+          url: imagem_url,
+          tipo: "foto",
+          ordem: ordemInicial,
+        });
+        if (error) throw error;
+        ordemInicial += 1;
+      }
+      if (produtoId && pendingMidias.length > 0) {
+        setUploadingMidia(true);
+        const urls = await Promise.all(
+          pendingMidias.map((m, index) => uploadMidia(produtoId, m.file, m.tipo, ordemInicial + index)),
+        );
+        const primeiraFoto = urls[pendingMidias.findIndex((m) => m.tipo !== "video")];
+        if (!imagem_url && primeiraFoto) {
+          await supabase.from("produtos").update({ imagem_url: primeiraFoto }).eq("id", produtoId);
+        }
+      }
       toast.success(editing ? "Produto atualizado" : "Produto criado");
       setOpen(false);
       reset();
@@ -249,6 +304,7 @@ function ProdutosPage() {
       toast.error(e.message ?? "Erro ao salvar");
     } finally {
       setSaving(false);
+      setUploadingMidia(false);
     }
   }
 
@@ -260,12 +316,12 @@ function ProdutosPage() {
     load();
   }
 
-  if (!isAdmin) {
+  if (!isStaff) {
     return (
       <div>
         <PageHeader title="Produtos" />
         <Card><CardContent className="p-8 text-center text-muted-foreground">
-          Acesso restrito ao administrador.
+          Acesso restrito à equipe autorizada.
         </CardContent></Card>
       </div>
     );
@@ -542,10 +598,7 @@ function ProdutosPage() {
                   <div className="text-xs text-muted-foreground">Fotos, artes e vídeos exibidos no carrossel do cliente</div>
                 </div>
               </div>
-              {!editing ? (
-                <div className="text-xs text-muted-foreground">Salve o produto primeiro para enviar mídias.</div>
-              ) : (
-                <>
+              <>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {midias.map((m, i) => {
                       const isPrincipal = editing?.imagem_url === m.url;
@@ -591,7 +644,23 @@ function ProdutosPage() {
                         </div>
                       );
                     })}
-                    {midias.length === 0 && (
+                    {pendingMidias.map((m) => (
+                      <div key={m.id} className="relative aspect-square rounded-lg overflow-hidden border-2 border-dashed border-primary/40 bg-muted group">
+                        {m.tipo === "video" ? (
+                          <video src={m.preview} className="w-full h-full object-cover" muted />
+                        ) : (
+                          <img src={m.preview} alt="" className="w-full h-full object-cover" />
+                        )}
+                        <span className="absolute top-1 left-1 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">
+                          Novo {m.tipo}
+                        </span>
+                        <button type="button" title="Remover" onClick={() => removePendingMidia(m.id)}
+                          className="absolute top-1 right-1 h-7 w-7 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {midias.length === 0 && pendingMidias.length === 0 && (
                       <div className="col-span-full text-xs text-muted-foreground text-center py-4">
                         Nenhuma mídia adicionada ainda.
                       </div>
@@ -602,23 +671,22 @@ function ProdutosPage() {
                   </p>
                   <input
                     ref={midiaRef} type="file" hidden
-                    accept="image/*,video/mp4,video/webm,video/quicktime"
+                    accept="image/*"
+                    multiple
                     onChange={(e) => {
-                      const f = e.target.files?.[0]; if (!f) return;
-                      const tipo: "foto"|"video" = f.type.startsWith("video/") ? "video" : "foto";
-                      addMidia(f, tipo);
+                      if (e.target.files) addMidias(e.target.files, "foto");
                     }}
                   />
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
-                      onClick={() => { if (midiaRef.current) { midiaRef.current.accept = "image/*"; midiaRef.current.click(); } }}>
-                      <ImageIcon className="h-4 w-4" /> Foto
+                      onClick={() => { if (midiaRef.current) { midiaRef.current.accept = "image/*"; midiaRef.current.multiple = true; midiaRef.current.click(); } }}>
+                      <ImageIcon className="h-4 w-4" /> Fotos
                     </Button>
                     <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
                       onClick={() => {
                         const inp = document.createElement("input");
-                        inp.type = "file"; inp.accept = "image/*";
-                        inp.onchange = () => { const f = inp.files?.[0]; if (f) addMidia(f, "arte"); };
+                        inp.type = "file"; inp.accept = "image/*"; inp.multiple = true;
+                        inp.onchange = () => { if (inp.files) addMidias(inp.files, "arte"); };
                         inp.click();
                       }}>
                       <Upload className="h-4 w-4" /> Arte com preço
@@ -626,8 +694,8 @@ function ProdutosPage() {
                     <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
                       onClick={() => {
                         const inp = document.createElement("input");
-                        inp.type = "file"; inp.accept = "video/mp4,video/webm,video/quicktime";
-                        inp.onchange = () => { const f = inp.files?.[0]; if (f) addMidia(f, "video"); };
+                        inp.type = "file"; inp.accept = "video/mp4,video/webm,video/quicktime"; inp.multiple = true;
+                        inp.onchange = () => { if (inp.files) addMidias(inp.files, "video"); };
                         inp.click();
                       }}>
                       <Video className="h-4 w-4" /> Vídeo
@@ -635,7 +703,6 @@ function ProdutosPage() {
                     {uploadingMidia && <span className="text-xs text-muted-foreground self-center">Enviando…</span>}
                   </div>
                 </>
-              )}
             </div>
           </div>
 

@@ -18,6 +18,10 @@ export const Route = createFileRoute("/catalogo")({
     meta: [
       { title: `${STORE_NAME} — Catálogo Digital` },
       { name: "description", content: "Confira as artes, vídeos e ofertas dos produtos da Lar Doce Lar." },
+      { property: "og:title", content: `${STORE_NAME} — Catálogo Digital` },
+      { property: "og:description", content: "Confira as artes, vídeos e ofertas dos produtos da Lar Doce Lar." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
 });

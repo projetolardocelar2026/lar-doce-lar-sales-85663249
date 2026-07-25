@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, ShoppingCart, Sparkles, LogIn, Package, Share2 } from "lucide-react";
 import { brl, WHATSAPP_NUMBER, STORE_NAME } from "@/lib/format";
+import { precoVigente } from "@/lib/preco";
 import { toast } from "sonner";
 import { BannerSlider } from "@/components/BannerSlider";
 import { MediaCarousel, type Midia } from "@/components/MediaCarousel";
@@ -18,6 +19,10 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Lar Doce Lar — Limpeza, Utilidades e Praticidade" },
       { name: "description", content: "Vitrine online da Lar Doce Lar: produtos de limpeza, utilidades domésticas, higiene, automotivos e mercearia. Peça pelo WhatsApp." },
+      { property: "og:title", content: "Lar Doce Lar — Limpeza, Utilidades e Praticidade" },
+      { property: "og:description", content: "Vitrine online da Lar Doce Lar: produtos de limpeza, utilidades domésticas, higiene, automotivos e mercearia. Peça pelo WhatsApp." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
 });
@@ -25,7 +30,7 @@ export const Route = createFileRoute("/")({
 type Produto = {
   id: string; nome: string; descricao: string | null; preco: number;
   estoque: number; imagem_url: string | null; categoria_id: string | null;
-  destaque: boolean;
+  destaque: boolean; preco_promocional: number | null; promo_inicio: string | null; promo_fim: string | null;
 };
 type Categoria = { id: string; nome: string; icone: string | null };
 
@@ -62,7 +67,7 @@ function VitrinePage() {
 
   const totalCarrinho = Object.entries(carrinho).reduce((acc, [id, qtd]) => {
     const prod = produtos.find((p) => p.id === id);
-    return acc + (prod ? prod.preco * qtd : 0);
+    return acc + (prod ? precoVigente(prod).preco * qtd : 0);
   }, 0);
   const totalItens = Object.values(carrinho).reduce((a, b) => a + b, 0);
 
@@ -80,9 +85,11 @@ function VitrinePage() {
 
   function finalizarWhatsApp() {
     if (totalItens === 0) { toast.error("Adicione produtos ao carrinho"); return; }
-    const linhas = Object.entries(carrinho).map(([id, qtd]) => {
-      const p = produtos.find((x) => x.id === id)!;
-      return `• ${qtd}x ${p.nome} — ${brl(p.preco * qtd)}`;
+    const linhas = Object.entries(carrinho).flatMap(([id, qtd]) => {
+      const p = produtos.find((x) => x.id === id);
+      if (!p) return [];
+      const preco = precoVigente(p).preco;
+      return [`• ${qtd}x ${p.nome} — ${brl(preco * qtd)}`];
     });
     const msg = [
       `*Pedido — ${STORE_NAME}*`, "",
@@ -194,29 +201,40 @@ function VitrinePage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-            {filtered.map((p) => (
-              <Card key={p.id} className="overflow-hidden bg-gradient-card hover:shadow-elevated transition-smooth rounded-2xl">
-                <MediaCarousel midias={midias[p.id] ?? []} fallback={p.imagem_url} alt={p.nome} rounded="rounded-none" />
-                <CardContent className="p-3 space-y-2">
-                  <h3 className="font-semibold text-sm line-clamp-2 min-h-[2.5rem]">{p.nome}</h3>
-                  <div className="text-lg font-bold text-primary">{brl(p.preco)}</div>
-                  {p.destaque && (
-                    <Badge className="bg-accent text-accent-foreground">Destaque</Badge>
-                  )}
-                  {carrinho[p.id] ? (
-                    <div className="flex items-center justify-between gap-2">
-                      <Button size="sm" variant="outline" onClick={() => remove(p.id)}>−</Button>
-                      <span className="font-semibold">{carrinho[p.id]}</span>
-                      <Button size="sm" variant="sky" onClick={() => add(p.id)}>+</Button>
+            {filtered.map((p) => {
+              const vig = precoVigente(p);
+              return (
+                <Card key={p.id} className="overflow-hidden bg-gradient-card hover:shadow-elevated transition-smooth rounded-2xl relative">
+                  {vig.emPromocao && (
+                    <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold shadow-md">
+                      PROMO
                     </div>
-                  ) : (
-                    <Button size="sm" variant="hero" className="w-full" onClick={() => add(p.id)} disabled={p.estoque <= 0}>
-                      {p.estoque <= 0 ? "Esgotado" : "Adicionar"}
-                    </Button>
                   )}
-                </CardContent>
-              </Card>
-            ))}
+                  <MediaCarousel midias={midias[p.id] ?? []} fallback={p.imagem_url} alt={p.nome} rounded="rounded-none" />
+                  <CardContent className="p-3 space-y-2">
+                    <h3 className="font-semibold text-sm line-clamp-2 min-h-[2.5rem]">{p.nome}</h3>
+                    <div>
+                      {vig.emPromocao && <div className="text-xs text-muted-foreground line-through leading-none">{brl(vig.precoOriginal)}</div>}
+                      <div className={"text-lg font-bold " + (vig.emPromocao ? "text-accent" : "text-primary")}>{brl(vig.preco)}</div>
+                    </div>
+                    {p.destaque && (
+                      <Badge className="bg-accent text-accent-foreground">Destaque</Badge>
+                    )}
+                    {carrinho[p.id] ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <Button size="sm" variant="outline" onClick={() => remove(p.id)}>−</Button>
+                        <span className="font-semibold">{carrinho[p.id]}</span>
+                        <Button size="sm" variant="sky" onClick={() => add(p.id)}>+</Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="hero" className="w-full" onClick={() => add(p.id)} disabled={p.estoque <= 0}>
+                        {p.estoque <= 0 ? "Esgotado" : "Adicionar"}
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>
