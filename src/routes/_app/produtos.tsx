@@ -198,6 +198,8 @@ function ProdutosPage() {
   }
   function openNew() { reset(); setOpen(true); }
   function openEdit(p: Produto) {
+    pendingMidias.forEach((m) => URL.revokeObjectURL(m.preview));
+    setPendingMidias([]);
     setEditing(p);
     setForm({
       nome: p.nome,
@@ -584,10 +586,7 @@ function ProdutosPage() {
                   <div className="text-xs text-muted-foreground">Fotos, artes e vídeos exibidos no carrossel do cliente</div>
                 </div>
               </div>
-              {!editing ? (
-                <div className="text-xs text-muted-foreground">Salve o produto primeiro para enviar mídias.</div>
-              ) : (
-                <>
+              <>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {midias.map((m, i) => {
                       const isPrincipal = editing?.imagem_url === m.url;
@@ -633,7 +632,23 @@ function ProdutosPage() {
                         </div>
                       );
                     })}
-                    {midias.length === 0 && (
+                    {pendingMidias.map((m) => (
+                      <div key={m.id} className="relative aspect-square rounded-lg overflow-hidden border-2 border-dashed border-primary/40 bg-muted group">
+                        {m.tipo === "video" ? (
+                          <video src={m.preview} className="w-full h-full object-cover" muted />
+                        ) : (
+                          <img src={m.preview} alt="" className="w-full h-full object-cover" />
+                        )}
+                        <span className="absolute top-1 left-1 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">
+                          Novo {m.tipo}
+                        </span>
+                        <button type="button" title="Remover" onClick={() => removePendingMidia(m.id)}
+                          className="absolute top-1 right-1 h-7 w-7 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {midias.length === 0 && pendingMidias.length === 0 && (
                       <div className="col-span-full text-xs text-muted-foreground text-center py-4">
                         Nenhuma mídia adicionada ainda.
                       </div>
@@ -644,11 +659,10 @@ function ProdutosPage() {
                   </p>
                   <input
                     ref={midiaRef} type="file" hidden
-                    accept="image/*,video/mp4,video/webm,video/quicktime"
+                    accept="image/*"
+                    multiple
                     onChange={(e) => {
-                      const f = e.target.files?.[0]; if (!f) return;
-                      const tipo: "foto"|"video" = f.type.startsWith("video/") ? "video" : "foto";
-                      addMidia(f, tipo);
+                      if (e.target.files) addMidias(e.target.files, "foto");
                     }}
                   />
                   <div className="flex flex-wrap gap-2">
@@ -659,8 +673,8 @@ function ProdutosPage() {
                     <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
                       onClick={() => {
                         const inp = document.createElement("input");
-                        inp.type = "file"; inp.accept = "image/*";
-                        inp.onchange = () => { const f = inp.files?.[0]; if (f) addMidia(f, "arte"); };
+                        inp.type = "file"; inp.accept = "image/*"; inp.multiple = true;
+                        inp.onchange = () => { if (inp.files) addMidias(inp.files, "arte"); };
                         inp.click();
                       }}>
                       <Upload className="h-4 w-4" /> Arte com preço
@@ -668,8 +682,8 @@ function ProdutosPage() {
                     <Button type="button" size="sm" variant="outline" disabled={uploadingMidia}
                       onClick={() => {
                         const inp = document.createElement("input");
-                        inp.type = "file"; inp.accept = "video/mp4,video/webm,video/quicktime";
-                        inp.onchange = () => { const f = inp.files?.[0]; if (f) addMidia(f, "video"); };
+                        inp.type = "file"; inp.accept = "video/mp4,video/webm,video/quicktime"; inp.multiple = true;
+                        inp.onchange = () => { if (inp.files) addMidias(inp.files, "video"); };
                         inp.click();
                       }}>
                       <Video className="h-4 w-4" /> Vídeo
@@ -677,7 +691,6 @@ function ProdutosPage() {
                     {uploadingMidia && <span className="text-xs text-muted-foreground self-center">Enviando…</span>}
                   </div>
                 </>
-              )}
             </div>
           </div>
 
