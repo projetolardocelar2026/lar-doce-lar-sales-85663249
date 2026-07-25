@@ -116,7 +116,6 @@ function ProdutosPage() {
       toast.success(list.length > 1 ? `${list.length} mídias prontas para salvar` : "Mídia pronta para salvar");
       return;
     }
-    if (file.size > 25 * 1024 * 1024) return toast.error("Arquivo muito grande (máx 25MB)");
     setUploadingMidia(true);
     try {
       await Promise.all(list.map((file, index) => uploadMidia(editing.id, file, tipo, midias.length + index)));
@@ -265,11 +264,25 @@ function ProdutosPage() {
         promo_inicio: form.promo_inicio || null,
         promo_fim: form.promo_fim || null,
       };
-      const { error } = editing
-        ? await supabase.from("produtos").update(payload).eq("id", editing.id)
-        : await supabase.from("produtos").insert(payload).select("id").single();
-      if (error) throw error;
-      const produtoId = editing?.id ?? ("data" in (error ? {} : await Promise.resolve({ data: null })) ? null : null);
+      let produtoId = editing?.id ?? null;
+      if (editing) {
+        const { error } = await supabase.from("produtos").update(payload).eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from("produtos").insert(payload).select("id,imagem_url").single();
+        if (error || !data) throw error ?? new Error("Falha ao criar produto");
+        produtoId = data.id;
+      }
+      if (produtoId && pendingMidias.length > 0) {
+        setUploadingMidia(true);
+        const urls = await Promise.all(
+          pendingMidias.map((m, index) => uploadMidia(produtoId, m.file, m.tipo, index)),
+        );
+        const primeiraFoto = urls[pendingMidias.findIndex((m) => m.tipo !== "video")];
+        if (!imagem_url && primeiraFoto) {
+          await supabase.from("produtos").update({ imagem_url: primeiraFoto }).eq("id", produtoId);
+        }
+      }
       toast.success(editing ? "Produto atualizado" : "Produto criado");
       setOpen(false);
       reset();
@@ -289,12 +302,12 @@ function ProdutosPage() {
     load();
   }
 
-  if (!isAdmin) {
+  if (!isStaff) {
     return (
       <div>
         <PageHeader title="Produtos" />
         <Card><CardContent className="p-8 text-center text-muted-foreground">
-          Acesso restrito ao administrador.
+          Acesso restrito à equipe autorizada.
         </CardContent></Card>
       </div>
     );
