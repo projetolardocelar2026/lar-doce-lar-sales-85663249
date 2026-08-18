@@ -15,6 +15,11 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+
 import { brl, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
 import { precoVigente } from "@/lib/preco";
 import { toast } from "sonner";
