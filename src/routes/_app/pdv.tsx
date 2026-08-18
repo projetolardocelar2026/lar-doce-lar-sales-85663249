@@ -79,7 +79,9 @@ function PDVPage() {
   const [forma, setForma] = useState<Forma>("dinheiro");
   const [observacoes, setObservacoes] = useState("");
   const [valorRecebido, setValorRecebido] = useState<string>("");
+  const [cliOpen, setCliOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
   const [saving, setSaving] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showCart, setShowCart] = useState(false);
