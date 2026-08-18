@@ -50,3 +50,55 @@ export function abrirWhatsApp(telefone: string | null | undefined, mensagem: str
   const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
   window.open(url, "_blank", "noopener,noreferrer");
 }
+
+// ===== Caderneta consolidada =====
+export type CadernetaItem = { nome: string; quantidade: number; preco: number };
+export type CadernetaCompra = {
+  id: string;
+  data: Date;
+  total: number;
+  vencimento?: string | null;
+  itens: CadernetaItem[];
+};
+export type CadernetaPagamento = { data: Date; valor: number; forma: string };
+
+export function gerarTextoCaderneta(params: {
+  clienteNome: string;
+  compras: CadernetaCompra[];
+  pagamentos: CadernetaPagamento[];
+  saldoAtual: number;
+  catalogoUrl?: string;
+}): string {
+  const { clienteNome, compras, pagamentos, saldoAtual, catalogoUrl } = params;
+  const d = (x: Date) => x.toLocaleDateString("pt-BR");
+  const L: string[] = [];
+  L.push(`*${STORE_NAME}*`);
+  L.push(`📒 *Caderneta de ${clienteNome}*`);
+  L.push("");
+  L.push(`Saldo anterior: ${brl(0)}`);
+  L.push("");
+  L.push("*Compras:*");
+  if (compras.length === 0) L.push("• Nenhuma compra registrada");
+  for (const c of [...compras].sort((a, b) => a.data.getTime() - b.data.getTime())) {
+    L.push(`• ${d(c.data)} — + ${brl(c.total)}${c.vencimento ? ` (vence ${new Date(c.vencimento + "T12:00:00").toLocaleDateString("pt-BR")})` : ""}`);
+    for (const it of c.itens) {
+      L.push(`   - ${it.quantidade}x ${it.nome} — ${brl(it.preco * it.quantidade)}`);
+    }
+  }
+  if (pagamentos.length > 0) {
+    L.push("");
+    L.push("*Pagamentos:*");
+    for (const p of [...pagamentos].sort((a, b) => a.data.getTime() - b.data.getTime())) {
+      L.push(`• ${d(p.data)} — − ${brl(p.valor)} (${formaPagamentoLabel[p.forma] ?? p.forma})`);
+    }
+  }
+  L.push("");
+  L.push(`*Saldo atual: ${brl(saldoAtual)}*`);
+  if (catalogoUrl) {
+    L.push("");
+    L.push(`🛍️ Catálogo: ${catalogoUrl}`);
+  }
+  L.push("");
+  L.push("Obrigada pela preferência! 💙");
+  return L.join("\n");
+}

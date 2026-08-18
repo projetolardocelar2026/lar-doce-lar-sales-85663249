@@ -15,6 +15,11 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+
 import { brl, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
 import { precoVigente } from "@/lib/preco";
 import { toast } from "sonner";
@@ -74,7 +79,9 @@ function PDVPage() {
   const [forma, setForma] = useState<Forma>("dinheiro");
   const [observacoes, setObservacoes] = useState("");
   const [valorRecebido, setValorRecebido] = useState<string>("");
+  const [cliOpen, setCliOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
   const [saving, setSaving] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showCart, setShowCart] = useState(false);
@@ -700,19 +707,55 @@ function PDVPage() {
                   <UserPlus className="h-3.5 w-3.5 mr-1" /> Novo cliente
                 </Button>
               </div>
-              <Select value={clienteId || "none"} onValueChange={(v) => setClienteId(v === "none" ? "" : v)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Sem cliente (venda avulsa)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem cliente (venda avulsa)</SelectItem>
-                  {clientes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nome}{Number(c.saldo_devedor) > 0 ? ` — deve ${brl(c.saldo_devedor)}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={cliOpen} onOpenChange={setCliOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={cliOpen}
+                    className="h-9 w-full justify-between font-normal"
+                  >
+                    <span className="truncate">
+                      {cliente ? cliente.nome : "Sem cliente (venda avulsa)"}
+                    </span>
+                    <Search className="h-4 w-4 opacity-50 shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[--radix-popover-trigger-width] min-w-[260px]" align="start">
+                  <Command>
+                    <CommandInput placeholder="Digite nome ou telefone…" />
+                    <CommandList className="max-h-64">
+                      <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="sem cliente venda avulsa"
+                          onSelect={() => { setClienteId(""); setCliOpen(false); }}
+                        >
+                          Sem cliente (venda avulsa)
+                        </CommandItem>
+                        {clientes.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={`${c.nome} ${c.telefone ?? ""}`}
+                            onSelect={() => { setClienteId(c.id); setCliOpen(false); }}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="truncate">{c.nome}</div>
+                              <div className="text-[11px] text-muted-foreground truncate">
+                                {c.telefone || "Sem telefone"}
+                                {Number(c.saldo_devedor) > 0 ? ` · deve ${brl(c.saldo_devedor)}` : ""}
+                              </div>
+                            </div>
+                            {clienteId === c.id && <Check className="h-4 w-4 text-primary" />}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+
               {cliente && (
                 <div className="mt-2 rounded-md border bg-muted/40 p-2.5 text-xs space-y-1">
                   <div className="flex justify-between">
