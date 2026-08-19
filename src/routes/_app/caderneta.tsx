@@ -214,6 +214,44 @@ function CadernetaPage() {
     });
   }, [busca, clientesComRisco]);
 
+  type LancamentoExtrato = {
+    key: string;
+    data: string;
+    descricao: string;
+    valor: number;
+    tipo: "compra" | "pagamento";
+    saldo: number;
+  };
+
+  const extrato = useMemo<LancamentoExtrato[]>(() => {
+    const eventos = [
+      ...vendas.map((v) => ({
+        key: `v-${v.id}`,
+        data: v.data_venda,
+        descricao:
+          (itensPorVenda[v.id] ?? [])
+            .map((i) => `${Number(i.quantidade)}× ${i.produto_nome}`)
+            .join(", ") || v.observacoes || "Compra na caderneta",
+        valor: Number(v.total),
+        tipo: "compra" as const,
+      })),
+      ...pagamentos.map((p) => ({
+        key: `p-${p.id}`,
+        data: p.data_pagamento,
+        descricao: `Pagamento (${formaPagamentoLabel[p.forma_pagamento] ?? p.forma_pagamento})`,
+        valor: Number(p.valor),
+        tipo: "pagamento" as const,
+      })),
+    ].sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+
+    let saldo = 0;
+    return eventos.map((e) => {
+      saldo += e.tipo === "compra" ? e.valor : -e.valor;
+      return { ...e, saldo };
+    });
+  }, [vendas, pagamentos, itensPorVenda]);
+
+
   const totalDevedor = useMemo(
     () => clientes.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
     [clientes],
