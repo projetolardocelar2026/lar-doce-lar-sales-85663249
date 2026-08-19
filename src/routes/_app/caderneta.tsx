@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { brl, fmtDate, fmtDateOnly, formaPagamentoLabel } from "@/lib/format";
+import { abrirWhatsApp, gerarTextoCupom, gerarTextoCaderneta } from "@/lib/whatsapp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -21,7 +22,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Search, Plus, HandCoins, History, AlertCircle, AlertTriangle, ShieldAlert, CalendarClock, Pencil } from "lucide-react";
+import { Search, HandCoins, History, AlertCircle, AlertTriangle, ShieldAlert, CalendarClock, Pencil, ShoppingCart, Send, Receipt } from "lucide-react";
+
+const catalogoUrl = () =>
+  typeof window !== "undefined" ? `${window.location.origin}/catalogo` : undefined;
+
 
 type RiscoNivel = "ok" | "atencao" | "alto" | "estourado";
 
@@ -65,12 +70,22 @@ type Venda = {
   id: string;
   data_venda: string;
   total: number;
+  desconto: number | null;
   observacoes: string | null;
   forma_pagamento: string;
   status: string;
   vencimento_caderneta: string | null;
   cobranca_status: string | null;
 };
+
+type ItemVenda = {
+  venda_id: string;
+  produto_nome: string;
+  quantidade: number;
+  preco_unitario: number;
+  subtotal: number;
+};
+
 
 type Pagamento = {
   id: string;
@@ -100,7 +115,9 @@ function CadernetaPage() {
   const [loading, setLoading] = useState(true);
   const [selecionado, setSelecionado] = useState<Cliente | null>(null);
   const [vendas, setVendas] = useState<Venda[]>([]);
+  const [itensPorVenda, setItensPorVenda] = useState<Record<string, ItemVenda[]>>({});
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
+
 
   // Dialog: pagamento
   const [pagOpen, setPagOpen] = useState(false);
@@ -109,12 +126,9 @@ function CadernetaPage() {
   const [pagData, setPagData] = useState(todayInput());
   const [pagObs, setPagObs] = useState("");
 
-  // Dialog: nova venda a prazo
-  const [vendaOpen, setVendaOpen] = useState(false);
-  const [vendaValor, setVendaValor] = useState("");
-  const [vendaData, setVendaData] = useState(todayInput());
-  const [vendaObs, setVendaObs] = useState("");
-  const [vendaVenc, setVendaVenc] = useState("");
+  // Dialog: cupom individual
+  const [cupomVenda, setCupomVenda] = useState<Venda | null>(null);
+
 
   // Dialog: editar vencimento
   const [vencOpen, setVencOpen] = useState(false);
@@ -143,9 +157,10 @@ function CadernetaPage() {
     const [{ data: v }, { data: p }] = await Promise.all([
       supabase
         .from("vendas")
-        .select("id, data_venda, total, observacoes, forma_pagamento, status, vencimento_caderneta, cobranca_status")
+        .select("id, data_venda, total, desconto, observacoes, forma_pagamento, status, vencimento_caderneta, cobranca_status")
         .eq("cliente_id", clienteId)
         .eq("forma_pagamento", "caderneta")
+        .neq("status", "cancelada")
         .order("data_venda", { ascending: false }),
       supabase
         .from("pagamentos_caderneta")
@@ -153,9 +168,25 @@ function CadernetaPage() {
         .eq("cliente_id", clienteId)
         .order("data_pagamento", { ascending: false }),
     ]);
-    setVendas((v as Venda[]) ?? []);
+    const lista = (v as Venda[]) ?? [];
+    setVendas(lista);
     setPagamentos((p as Pagamento[]) ?? []);
+
+    if (lista.length > 0) {
+      const { data: itens } = await supabase
+        .from("itens_venda")
+        .select("venda_id, produto_nome, quantidade, preco_unitario, subtotal")
+        .in("venda_id", lista.map((x) => x.id));
+      const mapa: Record<string, ItemVenda[]> = {};
+      for (const it of (itens as ItemVenda[]) ?? []) {
+        (mapa[it.venda_id] ??= []).push(it);
+      }
+      setItensPorVenda(mapa);
+    } else {
+      setItensPorVenda({});
+    }
   };
+
 
   const abrirCliente = async (c: Cliente) => {
     setSelecionado(c);
@@ -182,6 +213,44 @@ function CadernetaPage() {
       return Number(b.saldo_devedor) - Number(a.saldo_devedor);
     });
   }, [busca, clientesComRisco]);
+
+  type LancamentoExtrato = {
+    key: string;
+    data: string;
+    descricao: string;
+    valor: number;
+    tipo: "compra" | "pagamento";
+    saldo: number;
+  };
+
+  const extrato = useMemo<LancamentoExtrato[]>(() => {
+    const eventos = [
+      ...vendas.map((v) => ({
+        key: `v-${v.id}`,
+        data: v.data_venda,
+        descricao:
+          (itensPorVenda[v.id] ?? [])
+            .map((i) => `${Number(i.quantidade)}× ${i.produto_nome}`)
+            .join(", ") || v.observacoes || "Compra na caderneta",
+        valor: Number(v.total),
+        tipo: "compra" as const,
+      })),
+      ...pagamentos.map((p) => ({
+        key: `p-${p.id}`,
+        data: p.data_pagamento,
+        descricao: `Pagamento (${formaPagamentoLabel[p.forma_pagamento] ?? p.forma_pagamento})`,
+        valor: Number(p.valor),
+        tipo: "pagamento" as const,
+      })),
+    ].sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+
+    let saldo = 0;
+    return eventos.map((e) => {
+      saldo += e.tipo === "compra" ? e.valor : -e.valor;
+      return { ...e, saldo };
+    });
+  }, [vendas, pagamentos, itensPorVenda]);
+
 
   const totalDevedor = useMemo(
     () => clientes.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
@@ -243,70 +312,59 @@ function CadernetaPage() {
     await carregarHistorico(selecionado.id);
   };
 
-  // ============ NOVA VENDA A PRAZO ============
-  const abrirNovaVenda = () => {
-    setVendaValor("");
-    setVendaData(todayInput());
-    setVendaObs("");
-    const venc = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    setVendaVenc(venc.toISOString().slice(0, 10));
-    setVendaOpen(true);
+  // ============ WHATSAPP ============
+  const enviarCupomCompra = (v: Venda) => {
+    if (!selecionado?.telefone) {
+      toast.error("Cliente sem telefone cadastrado");
+      return;
+    }
+    const itens = (itensPorVenda[v.id] ?? []).map((i) => ({
+      nome: i.produto_nome,
+      quantidade: Number(i.quantidade),
+      preco: Number(i.preco_unitario),
+    }));
+    const texto = gerarTextoCupom({
+      vendaId: v.id,
+      data: new Date(v.data_venda),
+      clienteNome: selecionado.nome,
+      itens,
+      total: Number(v.total),
+      formaPagamento: "caderneta",
+      saldoCadernetaAtualizado: Number(selecionado.saldo_devedor),
+      catalogoUrl: catalogoUrl(),
+    });
+    abrirWhatsApp(selecionado.telefone, texto);
   };
 
-  const registrarVendaPrazo = async () => {
-    if (!selecionado) return;
-    const valor = parseFloat(vendaValor.replace(",", "."));
-    if (!valor || valor <= 0) {
-      toast.error("Informe um valor válido");
+  const enviarCadernetaWhatsApp = () => {
+    if (!selecionado?.telefone) {
+      toast.error("Cliente sem telefone cadastrado");
       return;
     }
-    const novoSaldo = Number(selecionado.saldo_devedor) + valor;
-    if (
-      Number(selecionado.limite_caderneta) > 0 &&
-      novoSaldo > Number(selecionado.limite_caderneta)
-    ) {
-      toast.error(
-        `Valor excede o limite de ${brl(selecionado.limite_caderneta)} do cliente`,
-      );
-      return;
-    }
-    const { data: venda, error } = await supabase
-      .from("vendas")
-      .insert({
-        cliente_id: selecionado.id,
-        forma_pagamento: "caderneta",
-        total: valor,
-        data_venda: new Date(vendaData).toISOString(),
-        status: "pendente",
-        observacoes: vendaObs || "Lançamento manual de caderneta",
-        atendente_id: user?.id ?? null,
-        vencimento_caderneta: vendaVenc || null,
-        cobranca_status: "aberta",
-      })
-      .select("id")
-      .single();
-    if (error || !venda) {
-      toast.error("Erro ao registrar venda: " + (error?.message ?? ""));
-      return;
-    }
-    await supabase.from("itens_venda").insert({
-      venda_id: venda.id,
-      produto_nome: vendaObs || "Lançamento de caderneta",
-      quantidade: 1,
-      preco_unitario: valor,
-      subtotal: valor,
+    const texto = gerarTextoCaderneta({
+      clienteNome: selecionado.nome,
+      compras: vendas.map((v) => ({
+        id: v.id,
+        data: new Date(v.data_venda),
+        total: Number(v.total),
+        vencimento: v.vencimento_caderneta,
+        itens: (itensPorVenda[v.id] ?? []).map((i) => ({
+          nome: i.produto_nome,
+          quantidade: Number(i.quantidade),
+          preco: Number(i.preco_unitario),
+        })),
+      })),
+      pagamentos: pagamentos.map((p) => ({
+        data: new Date(p.data_pagamento),
+        valor: Number(p.valor),
+        forma: p.forma_pagamento,
+      })),
+      saldoAtual: Number(selecionado.saldo_devedor),
+      catalogoUrl: catalogoUrl(),
     });
-    toast.success("Venda a prazo lançada na caderneta");
-    setVendaOpen(false);
-    await carregarClientes();
-    const { data } = await supabase
-      .from("clientes")
-      .select("id, nome, telefone, saldo_devedor, limite_caderneta")
-      .eq("id", selecionado.id)
-      .maybeSingle();
-    if (data) setSelecionado(data as Cliente);
-    await carregarHistorico(selecionado.id);
+    abrirWhatsApp(selecionado.telefone, texto);
   };
+
 
   // ============ EDITAR VENCIMENTO ============
   const abrirEditarVenc = (v: Venda) => {
@@ -511,8 +569,9 @@ function CadernetaPage() {
           {!selecionado && (
             <Card>
               <CardContent className="p-10 text-center text-muted-foreground">
-                Selecione um cliente à esquerda para ver o histórico, lançar uma
-                venda a prazo ou registrar pagamento.
+                Selecione um cliente à esquerda para ver as compras da caderneta,
+                o extrato consolidado e registrar pagamentos.
+
               </CardContent>
             </Card>
           )}
@@ -544,8 +603,18 @@ function CadernetaPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" onClick={abrirNovaVenda}>
-                      <Plus className="h-4 w-4 mr-1" /> Venda a prazo
+                    <Button variant="outline" asChild>
+                      <Link to="/pdv">
+                        <ShoppingCart className="h-4 w-4 mr-1" /> Nova compra no PDV
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={enviarCadernetaWhatsApp}
+                      disabled={!selecionado.telefone}
+                      title={!selecionado.telefone ? "Cliente sem telefone" : "Enviar caderneta"}
+                    >
+                      <Send className="h-4 w-4 mr-1" /> Enviar Caderneta pelo WhatsApp
                     </Button>
                     <Button
                       onClick={() => abrirPagamento()}
@@ -554,6 +623,7 @@ function CadernetaPage() {
                       <HandCoins className="h-4 w-4 mr-1" /> Registrar pagamento
                     </Button>
                   </div>
+
                 </div>
 
                 {Number(selecionado.limite_caderneta) > 0 &&
@@ -593,73 +663,86 @@ function CadernetaPage() {
                 <Tabs defaultValue="vendas">
                   <TabsList>
                     <TabsTrigger value="vendas">
-                      <History className="h-4 w-4 mr-1" /> Vendas a prazo
+                      <History className="h-4 w-4 mr-1" /> Compras
                     </TabsTrigger>
                     <TabsTrigger value="pagamentos">Pagamentos</TabsTrigger>
+                    <TabsTrigger value="extrato">Extrato</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="vendas" className="mt-4">
                     {vendas.length === 0 ? (
                       <div className="text-sm text-muted-foreground py-6 text-center">
-                        Nenhuma venda a prazo registrada.
+                        Nenhuma compra na caderneta. Registre a venda no PDV escolhendo o pagamento
+                        "Caderneta".
                       </div>
                     ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Data</TableHead>
-                            <TableHead>Vencimento</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Observação</TableHead>
-                            <TableHead className="text-right">Valor</TableHead>
-                            <TableHead></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {vendas.map((v) => {
-                            const atraso = diasAtraso(v.vencimento_caderneta);
-                            const paga = v.status === "paga" || v.cobranca_status === "paga";
-                            const statusLabel = paga ? "Paga" : atraso > 0 ? "Vencida" : "Aberta";
-                            const statusVar: "default" | "destructive" | "secondary" =
-                              paga ? "secondary" : atraso > 0 ? "destructive" : "default";
-                            return (
-                              <TableRow key={v.id}>
-                                <TableCell className="whitespace-nowrap">
-                                  {fmtDate(v.data_venda)}
-                                </TableCell>
-                                <TableCell className="whitespace-nowrap text-sm">
-                                  {v.vencimento_caderneta ? (
-                                    <div>
-                                      <div>{fmtDateOnly(v.vencimento_caderneta)}</div>
-                                      {!paga && atraso > 0 && (
-                                        <div className="text-[10px] text-destructive">
-                                          {atraso} {atraso === 1 ? "dia em atraso" : "dias em atraso"}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : "—"}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={statusVar}>{statusLabel}</Badge>
-                                </TableCell>
-                                <TableCell className="text-muted-foreground">
-                                  {v.observacoes || "—"}
-                                </TableCell>
-                                <TableCell className="text-right font-medium">
-                                  {brl(v.total)}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {!paga && (
-                                    <Button size="icon" variant="ghost" onClick={() => abrirEditarVenc(v)} title="Alterar vencimento">
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
+                      <div className="space-y-3">
+                        {vendas.map((v) => {
+                          const atraso = diasAtraso(v.vencimento_caderneta);
+                          const paga = v.status === "paga" || v.cobranca_status === "paga";
+                          const statusLabel = paga ? "Paga" : atraso > 0 ? "Vencida" : "Aberta";
+                          const statusVar: "default" | "destructive" | "secondary" =
+                            paga ? "secondary" : atraso > 0 ? "destructive" : "default";
+                          const itens = itensPorVenda[v.id] ?? [];
+                          return (
+                            <div key={v.id} className="rounded-md border p-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant={statusVar}>{statusLabel}</Badge>
+                                <span className="text-sm font-medium">{fmtDate(v.data_venda)}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Vencimento:{" "}
+                                  {v.vencimento_caderneta ? fmtDateOnly(v.vencimento_caderneta) : "—"}
+                                  {!paga && atraso > 0 && (
+                                    <span className="text-destructive">
+                                      {" "}· {atraso} {atraso === 1 ? "dia em atraso" : "dias em atraso"}
+                                    </span>
                                   )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                                </span>
+                                <span className="ml-auto font-semibold">{brl(v.total)}</span>
+                              </div>
+
+                              <div className="mt-2 space-y-1">
+                                {itens.length === 0 ? (
+                                  <div className="text-xs text-muted-foreground">Sem itens registrados.</div>
+                                ) : (
+                                  itens.map((i, idx) => (
+                                    <div key={idx} className="flex justify-between text-xs">
+                                      <span>
+                                        {Number(i.quantidade)}× {i.produto_nome}
+                                        <span className="text-muted-foreground">
+                                          {" "}({brl(i.preco_unitario)} un.)
+                                        </span>
+                                      </span>
+                                      <span>{brl(i.subtotal)}</span>
+                                    </div>
+                                  ))
+                                )}
+                                {Number(v.desconto) > 0 && (
+                                  <div className="flex justify-between text-xs text-emerald-600">
+                                    <span>Desconto</span>
+                                    <span>− {brl(v.desconto)}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {v.observacoes && (
+                                <div className="mt-2 text-xs text-muted-foreground">Obs.: {v.observacoes}</div>
+                              )}
+
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <Button size="sm" variant="outline" onClick={() => setCupomVenda(v)}>
+                                  <Receipt className="h-4 w-4 mr-1" /> Ver cupom
+                                </Button>
+                                {!paga && (
+                                  <Button size="sm" variant="ghost" onClick={() => abrirEditarVenc(v)}>
+                                    <Pencil className="h-4 w-4 mr-1" /> Vencimento
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </TabsContent>
 
@@ -700,7 +783,56 @@ function CadernetaPage() {
                       </Table>
                     )}
                   </TabsContent>
+
+                  <TabsContent value="extrato" className="mt-4">
+                    <div className="text-xs text-muted-foreground mb-2">
+                      Saldo anterior: <strong>{brl(0)}</strong>
+                    </div>
+                    {extrato.length === 0 ? (
+                      <div className="text-sm text-muted-foreground py-6 text-center">
+                        Sem lançamentos na caderneta.
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Data</TableHead>
+                            <TableHead>Lançamento</TableHead>
+                            <TableHead className="text-right">Valor</TableHead>
+                            <TableHead className="text-right">Saldo</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {extrato.map((l) => (
+                            <TableRow key={l.key}>
+                              <TableCell className="whitespace-nowrap text-xs">
+                                {fmtDateOnly(l.data)}
+                              </TableCell>
+                              <TableCell className="text-xs">{l.descricao}</TableCell>
+                              <TableCell
+                                className={`text-right text-xs font-medium ${
+                                  l.tipo === "compra" ? "text-destructive" : "text-emerald-600"
+                                }`}
+                              >
+                                {l.tipo === "compra" ? "+" : "−"} {brl(l.valor)}
+                              </TableCell>
+                              <TableCell className="text-right text-xs font-semibold">
+                                {brl(l.saldo)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    <div className="mt-3 flex justify-between items-center border-t pt-3">
+                      <span className="text-sm text-muted-foreground">Saldo atual</span>
+                      <span className="text-lg font-bold text-destructive">
+                        {brl(selecionado.saldo_devedor)}
+                      </span>
+                    </div>
+                  </TabsContent>
                 </Tabs>
+
               </CardContent>
             </Card>
           )}
@@ -776,68 +908,70 @@ function CadernetaPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: nova venda a prazo */}
-      <Dialog open={vendaOpen} onOpenChange={setVendaOpen}>
-        <DialogContent>
+      {/* Dialog: cupom individual da compra */}
+      <Dialog open={!!cupomVenda} onOpenChange={(o) => !o && setCupomVenda(null)}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              Lançar venda a prazo — {selecionado?.nome}
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" /> Cupom da compra
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Valor da venda</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                inputMode="decimal"
-                value={vendaValor}
-                onChange={(e) => setVendaValor(e.target.value)}
-                placeholder="0,00"
-                autoFocus
-              />
-            </div>
-            <div>
-              <Label>Data da venda</Label>
-              <Input
-                type="datetime-local"
-                value={vendaData}
-                onChange={(e) => setVendaData(e.target.value)}
-              />
-              <div className="text-xs text-muted-foreground mt-1">
-                Use a data real em que o cliente levou o produto.
+          {cupomVenda && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <div className="text-xs text-muted-foreground">Data</div>
+                  {fmtDate(cupomVenda.data_venda)}
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Vencimento</div>
+                  {cupomVenda.vencimento_caderneta ? fmtDateOnly(cupomVenda.vencimento_caderneta) : "—"}
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Cliente</div>
+                  {selecionado?.nome}
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Compra</div>
+                  #{cupomVenda.id.slice(0, 8)}
+                </div>
+              </div>
+              <div className="border-t pt-2 space-y-1">
+                {(itensPorVenda[cupomVenda.id] ?? []).map((i, idx) => (
+                  <div key={idx} className="flex justify-between text-xs">
+                    <span>
+                      {Number(i.quantidade)}× {i.produto_nome}
+                      <span className="text-muted-foreground"> ({brl(i.preco_unitario)} un.)</span>
+                    </span>
+                    <span>{brl(i.subtotal)}</span>
+                  </div>
+                ))}
+              </div>
+              {Number(cupomVenda.desconto) > 0 && (
+                <div className="flex justify-between text-xs text-emerald-600">
+                  <span>Desconto</span>
+                  <span>− {brl(cupomVenda.desconto)}</span>
+                </div>
+              )}
+              <div className="border-t pt-2 flex justify-between font-semibold">
+                <span>Total</span>
+                <span>{brl(cupomVenda.total)}</span>
               </div>
             </div>
-            <div>
-              <Label>Vencimento</Label>
-              <Input
-                type="date"
-                value={vendaVenc}
-                onChange={(e) => setVendaVenc(e.target.value)}
-              />
-              <div className="text-xs text-muted-foreground mt-1">
-                Padrão: 30 dias após a venda. Pode ser ajustado depois.
-              </div>
-            </div>
-            <div>
-              <Label>Descrição / observação</Label>
-              <Textarea
-                rows={2}
-                value={vendaObs}
-                onChange={(e) => setVendaObs(e.target.value)}
-                placeholder="Ex.: Sabão em pó, vassoura, etc."
-              />
-            </div>
-          </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setVendaOpen(false)}>
-              Cancelar
+            <Button variant="outline" onClick={() => setCupomVenda(null)}>Fechar</Button>
+            <Button
+              onClick={() => cupomVenda && enviarCupomCompra(cupomVenda)}
+              disabled={!selecionado?.telefone}
+              title={!selecionado?.telefone ? "Cliente sem telefone" : "Enviar cupom"}
+            >
+              <Send className="h-4 w-4 mr-1" /> Enviar no WhatsApp
             </Button>
-            <Button onClick={registrarVendaPrazo}>Lançar na caderneta</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Dialog: editar vencimento */}
       <Dialog open={vencOpen} onOpenChange={setVencOpen}>
