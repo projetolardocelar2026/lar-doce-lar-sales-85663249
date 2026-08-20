@@ -11,6 +11,10 @@ export const fmtDateOnly = (d: string | Date) =>
 
 export const WHATSAPP_NUMBER = "5511976781948";
 export const STORE_NAME = "Lar Doce Lar — Limpeza e Praticidade";
+// Chave PIX exibida nas cobranças enviadas pelo WhatsApp
+export const PIX_KEY = "5511976781948";
+export const PIX_TITULAR = "Lar Doce Lar";
+
 
 export const formaPagamentoLabel: Record<string, string> = {
   dinheiro: "Dinheiro",
