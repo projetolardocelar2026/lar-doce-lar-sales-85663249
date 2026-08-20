@@ -403,7 +403,7 @@ function CadernetaPage() {
     <div>
       <PageHeader
         title="Caderneta"
-        description="Devedores, vendas a prazo e baixas de pagamento"
+        description="Compras a prazo geradas no PDV, extrato consolidado e baixas de pagamento"
       />
 
       {/* Resumo */}
