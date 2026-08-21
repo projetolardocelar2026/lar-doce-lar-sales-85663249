@@ -4,7 +4,8 @@ import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { brl, fmtDate, fmtDateOnly, formaPagamentoLabel } from "@/lib/format";
-import { abrirWhatsApp, gerarTextoCupom, gerarTextoCaderneta } from "@/lib/whatsapp";
+import { abrirWhatsApp, gerarTextoCupom, gerarTextoComprasSelecionadas, gerarTextoExtratoAberto } from "@/lib/whatsapp";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,6 +126,15 @@ function CadernetaPage() {
   const [pagForma, setPagForma] = useState<string>("dinheiro");
   const [pagData, setPagData] = useState(todayInput());
   const [pagObs, setPagObs] = useState("");
+  // Pagamento misto (múltiplas formas no mesmo recebimento)
+  const [pagMisto, setPagMisto] = useState(false);
+  const [pagPartes, setPagPartes] = useState<{ forma: string; valor: string }[]>([
+    { forma: "dinheiro", valor: "" },
+    { forma: "pix", valor: "" },
+  ]);
+
+  // Seleção manual de compras para envio no WhatsApp
+  const [selecionadas, setSelecionadas] = useState<string[]>([]);
 
   // Dialog: cupom individual
   const [cupomVenda, setCupomVenda] = useState<Venda | null>(null);
@@ -190,6 +200,7 @@ function CadernetaPage() {
 
   const abrirCliente = async (c: Cliente) => {
     setSelecionado(c);
+    setSelecionadas([]);
     await carregarHistorico(c.id);
   };
 
@@ -251,6 +262,20 @@ function CadernetaPage() {
     });
   }, [vendas, pagamentos, itensPorVenda]);
 
+  // Compras ainda em aberto (não quitadas)
+  const vendasEmAberto = useMemo(
+    () => vendas.filter((v) => v.status !== "paga" && v.cobranca_status !== "paga"),
+    [vendas],
+  );
+
+  const totalSelecionado = useMemo(
+    () =>
+      vendasEmAberto
+        .filter((v) => selecionadas.includes(v.id))
+        .reduce((s, v) => s + Number(v.total), 0),
+    [vendasEmAberto, selecionadas],
+  );
+
 
   const totalDevedor = useMemo(
     () => clientes.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
@@ -271,33 +296,66 @@ function CadernetaPage() {
     setPagForma("dinheiro");
     setPagData(todayInput());
     setPagObs("");
+    setPagMisto(false);
+    setPagPartes([
+      { forma: "dinheiro", valor: "" },
+      { forma: "pix", valor: "" },
+    ]);
     setPagOpen(true);
   };
 
+  const num = (s: string) => parseFloat((s || "").replace(",", ".")) || 0;
+  const totalMisto = pagPartes.reduce((s, p) => s + num(p.valor), 0);
+
   const registrarPagamento = async () => {
     if (!selecionado) return;
-    const valor = parseFloat(pagValor.replace(",", "."));
-    if (!valor || valor <= 0) {
-      toast.error("Informe um valor válido");
-      return;
+
+    type Forma = "dinheiro" | "pix" | "cartao_debito" | "cartao_credito";
+    let partes: { forma: Forma; valor: number }[];
+
+    if (pagMisto) {
+      partes = pagPartes
+        .filter((p) => num(p.valor) > 0)
+        .map((p) => ({ forma: p.forma as Forma, valor: num(p.valor) }));
+      if (partes.length === 0) {
+        toast.error("Informe pelo menos um valor");
+        return;
+      }
+    } else {
+      const valor = num(pagValor);
+      if (!valor || valor <= 0) {
+        toast.error("Informe um valor válido");
+        return;
+      }
+      partes = [{ forma: pagForma as Forma, valor }];
     }
-    if (valor > Number(selecionado.saldo_devedor) + 0.001) {
+
+    const total = partes.reduce((s, p) => s + p.valor, 0);
+    if (total > Number(selecionado.saldo_devedor) + 0.001) {
       toast.error("Valor maior que o saldo devedor");
       return;
     }
-    const { error } = await supabase.from("pagamentos_caderneta").insert({
-      cliente_id: selecionado.id,
-      valor,
-      forma_pagamento: pagForma as "dinheiro" | "pix" | "cartao_debito" | "cartao_credito",
-      data_pagamento: new Date(pagData).toISOString(),
-      observacoes: pagObs || null,
-      atendente_id: user?.id ?? null,
-    });
+
+    const dataISO = new Date(pagData).toISOString();
+    const { error } = await supabase.from("pagamentos_caderneta").insert(
+      partes.map((p) => ({
+        cliente_id: selecionado.id,
+        valor: p.valor,
+        forma_pagamento: p.forma,
+        data_pagamento: dataISO,
+        observacoes: pagObs || null,
+        atendente_id: user?.id ?? null,
+      })),
+    );
     if (error) {
       toast.error("Erro ao registrar pagamento: " + error.message);
       return;
     }
-    toast.success("Pagamento registrado e lançado no fluxo de caixa");
+    toast.success(
+      partes.length > 1
+        ? `Pagamento misto de ${brl(total)} registrado em ${partes.length} formas`
+        : "Pagamento registrado e lançado no fluxo de caixa",
+    );
     setPagOpen(false);
     await carregarClientes();
     const novo = clientes.find((c) => c.id === selecionado.id);
@@ -311,6 +369,7 @@ function CadernetaPage() {
     }
     await carregarHistorico(selecionado.id);
   };
+
 
   // ============ WHATSAPP ============
   const enviarCupomCompra = (v: Venda) => {
@@ -336,34 +395,52 @@ function CadernetaPage() {
     abrirWhatsApp(selecionado.telefone, texto);
   };
 
+  const compraParaTexto = (v: Venda) => ({
+    id: v.id,
+    data: new Date(v.data_venda),
+    total: Number(v.total),
+    vencimento: v.vencimento_caderneta,
+    itens: (itensPorVenda[v.id] ?? []).map((i) => ({
+      nome: i.produto_nome,
+      quantidade: Number(i.quantidade),
+      preco: Number(i.preco_unitario),
+    })),
+  });
+
+  // Extrato compacto: só compras em aberto, agrupadas por vencimento
   const enviarCadernetaWhatsApp = () => {
     if (!selecionado?.telefone) {
       toast.error("Cliente sem telefone cadastrado");
       return;
     }
-    const texto = gerarTextoCaderneta({
+    const texto = gerarTextoExtratoAberto({
       clienteNome: selecionado.nome,
-      compras: vendas.map((v) => ({
-        id: v.id,
-        data: new Date(v.data_venda),
-        total: Number(v.total),
-        vencimento: v.vencimento_caderneta,
-        itens: (itensPorVenda[v.id] ?? []).map((i) => ({
-          nome: i.produto_nome,
-          quantidade: Number(i.quantidade),
-          preco: Number(i.preco_unitario),
-        })),
-      })),
-      pagamentos: pagamentos.map((p) => ({
-        data: new Date(p.data_pagamento),
-        valor: Number(p.valor),
-        forma: p.forma_pagamento,
-      })),
+      compras: vendasEmAberto.map(compraParaTexto),
       saldoAtual: Number(selecionado.saldo_devedor),
       catalogoUrl: catalogoUrl(),
     });
     abrirWhatsApp(selecionado.telefone, texto);
   };
+
+  const enviarComprasSelecionadas = () => {
+    if (!selecionado?.telefone) {
+      toast.error("Cliente sem telefone cadastrado");
+      return;
+    }
+    const marcadas = vendasEmAberto.filter((v) => selecionadas.includes(v.id));
+    if (marcadas.length === 0) {
+      toast.error("Selecione ao menos uma compra");
+      return;
+    }
+    const texto = gerarTextoComprasSelecionadas({
+      clienteNome: selecionado.nome,
+      compras: marcadas.map(compraParaTexto),
+      saldoTotal: Number(selecionado.saldo_devedor),
+      catalogoUrl: catalogoUrl(),
+    });
+    abrirWhatsApp(selecionado.telefone, texto);
+  };
+
 
 
   // ============ EDITAR VENCIMENTO ============
@@ -614,7 +691,7 @@ function CadernetaPage() {
                       disabled={!selecionado.telefone}
                       title={!selecionado.telefone ? "Cliente sem telefone" : "Enviar caderneta"}
                     >
-                      <Send className="h-4 w-4 mr-1" /> Enviar Caderneta pelo WhatsApp
+                      <Send className="h-4 w-4 mr-1" /> Enviar Extrato (em aberto)
                     </Button>
                     <Button
                       onClick={() => abrirPagamento()}
@@ -677,6 +754,34 @@ function CadernetaPage() {
                       </div>
                     ) : (
                       <div className="space-y-3">
+                        {vendasEmAberto.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-2">
+                            <label className="flex items-center gap-2 text-xs">
+                              <Checkbox
+                                checked={
+                                  selecionadas.length > 0 &&
+                                  selecionadas.length === vendasEmAberto.length
+                                }
+                                onCheckedChange={(c) =>
+                                  setSelecionadas(c ? vendasEmAberto.map((x) => x.id) : [])
+                                }
+                              />
+                              Selecionar todas em aberto
+                            </label>
+                            <span className="text-xs text-muted-foreground">
+                              {selecionadas.length} selecionada(s) · {brl(totalSelecionado)}
+                            </span>
+                            <Button
+                              size="sm"
+                              className="ml-auto"
+                              onClick={enviarComprasSelecionadas}
+                              disabled={selecionadas.length === 0 || !selecionado.telefone}
+                              title={!selecionado.telefone ? "Cliente sem telefone" : undefined}
+                            >
+                              <Send className="h-4 w-4 mr-1" /> Enviar Compras Selecionadas no WhatsApp
+                            </Button>
+                          </div>
+                        )}
                         {vendas.map((v) => {
                           const atraso = diasAtraso(v.vencimento_caderneta);
                           const paga = v.status === "paga" || v.cobranca_status === "paga";
@@ -684,9 +789,24 @@ function CadernetaPage() {
                           const statusVar: "default" | "destructive" | "secondary" =
                             paga ? "secondary" : atraso > 0 ? "destructive" : "default";
                           const itens = itensPorVenda[v.id] ?? [];
+                          const marcada = selecionadas.includes(v.id);
                           return (
-                            <div key={v.id} className="rounded-md border p-3">
+                            <div
+                              key={v.id}
+                              className={`rounded-md border p-3 ${marcada ? "ring-1 ring-primary bg-primary/5" : ""}`}
+                            >
                               <div className="flex flex-wrap items-center gap-2">
+                                {!paga && (
+                                  <Checkbox
+                                    checked={marcada}
+                                    onCheckedChange={(c) =>
+                                      setSelecionadas((prev) =>
+                                        c ? [...prev, v.id] : prev.filter((x) => x !== v.id),
+                                      )
+                                    }
+                                    aria-label="Selecionar compra para envio"
+                                  />
+                                )}
                                 <Badge variant={statusVar}>{statusLabel}</Badge>
                                 <span className="text-sm font-medium">{fmtDate(v.data_venda)}</span>
                                 <span className="text-xs text-muted-foreground">
@@ -700,6 +820,7 @@ function CadernetaPage() {
                                 </span>
                                 <span className="ml-auto font-semibold">{brl(v.total)}</span>
                               </div>
+
 
                               <div className="mt-2 space-y-1">
                                 {itens.length === 0 ? (
@@ -848,47 +969,119 @@ function CadernetaPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={pagMisto} onCheckedChange={(c) => setPagMisto(!!c)} />
+              Pagamento misto (mais de uma forma)
+            </label>
+
+            {!pagMisto ? (
+              <>
+                <div>
+                  <Label>Valor recebido</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    value={pagValor}
+                    onChange={(e) => setPagValor(e.target.value)}
+                    placeholder="0,00"
+                    autoFocus
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Saldo atual: {brl(selecionado?.saldo_devedor ?? 0)}
+                  </div>
+                </div>
+                <div>
+                  <Label>Forma de pagamento</Label>
+                  <Select value={pagForma} onValueChange={setPagForma}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FORMAS_PAGAMENTO.map((f) => (
+                        <SelectItem key={f.v} value={f.v}>
+                          {f.l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label>Formas e valores</Label>
+                {pagPartes.map((p, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <Select
+                      value={p.forma}
+                      onValueChange={(val) =>
+                        setPagPartes((prev) =>
+                          prev.map((x, i) => (i === idx ? { ...x, forma: val } : x)),
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FORMAS_PAGAMENTO.map((f) => (
+                          <SelectItem key={f.v} value={f.v}>
+                            {f.l}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      placeholder="0,00"
+                      value={p.valor}
+                      onChange={(e) =>
+                        setPagPartes((prev) =>
+                          prev.map((x, i) => (i === idx ? { ...x, valor: e.target.value } : x)),
+                        )
+                      }
+                    />
+                    {pagPartes.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPagPartes((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        ✕
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagPartes((prev) => [...prev, { forma: "dinheiro", valor: "" }])}
+                >
+                  + Adicionar forma
+                </Button>
+                <div className="flex justify-between text-sm border-t pt-2">
+                  <span className="text-muted-foreground">
+                    Saldo atual: {brl(selecionado?.saldo_devedor ?? 0)}
+                  </span>
+                  <span className="font-semibold">Total: {brl(totalMisto)}</span>
+                </div>
+              </div>
+            )}
+
             <div>
-              <Label>Valor recebido</Label>
+              <Label>Data do pagamento</Label>
               <Input
-                type="number"
-                step="0.01"
-                min="0"
-                inputMode="decimal"
-                value={pagValor}
-                onChange={(e) => setPagValor(e.target.value)}
-                placeholder="0,00"
-                autoFocus
+                type="datetime-local"
+                value={pagData}
+                onChange={(e) => setPagData(e.target.value)}
               />
-              <div className="text-xs text-muted-foreground mt-1">
-                Saldo atual: {brl(selecionado?.saldo_devedor ?? 0)}
-              </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Forma de pagamento</Label>
-                <Select value={pagForma} onValueChange={setPagForma}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FORMAS_PAGAMENTO.map((f) => (
-                      <SelectItem key={f.v} value={f.v}>
-                        {f.l}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Data do pagamento</Label>
-                <Input
-                  type="datetime-local"
-                  value={pagData}
-                  onChange={(e) => setPagData(e.target.value)}
-                />
-              </div>
-            </div>
+
+
             <div>
               <Label>Observações</Label>
               <Textarea
