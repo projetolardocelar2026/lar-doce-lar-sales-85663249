@@ -337,34 +337,52 @@ function CadernetaPage() {
     abrirWhatsApp(selecionado.telefone, texto);
   };
 
+  const compraParaTexto = (v: Venda) => ({
+    id: v.id,
+    data: new Date(v.data_venda),
+    total: Number(v.total),
+    vencimento: v.vencimento_caderneta,
+    itens: (itensPorVenda[v.id] ?? []).map((i) => ({
+      nome: i.produto_nome,
+      quantidade: Number(i.quantidade),
+      preco: Number(i.preco_unitario),
+    })),
+  });
+
+  // Extrato compacto: só compras em aberto, agrupadas por vencimento
   const enviarCadernetaWhatsApp = () => {
     if (!selecionado?.telefone) {
       toast.error("Cliente sem telefone cadastrado");
       return;
     }
-    const texto = gerarTextoCaderneta({
+    const texto = gerarTextoExtratoAberto({
       clienteNome: selecionado.nome,
-      compras: vendas.map((v) => ({
-        id: v.id,
-        data: new Date(v.data_venda),
-        total: Number(v.total),
-        vencimento: v.vencimento_caderneta,
-        itens: (itensPorVenda[v.id] ?? []).map((i) => ({
-          nome: i.produto_nome,
-          quantidade: Number(i.quantidade),
-          preco: Number(i.preco_unitario),
-        })),
-      })),
-      pagamentos: pagamentos.map((p) => ({
-        data: new Date(p.data_pagamento),
-        valor: Number(p.valor),
-        forma: p.forma_pagamento,
-      })),
+      compras: vendasEmAberto.map(compraParaTexto),
       saldoAtual: Number(selecionado.saldo_devedor),
       catalogoUrl: catalogoUrl(),
     });
     abrirWhatsApp(selecionado.telefone, texto);
   };
+
+  const enviarComprasSelecionadas = () => {
+    if (!selecionado?.telefone) {
+      toast.error("Cliente sem telefone cadastrado");
+      return;
+    }
+    const marcadas = vendasEmAberto.filter((v) => selecionadas.includes(v.id));
+    if (marcadas.length === 0) {
+      toast.error("Selecione ao menos uma compra");
+      return;
+    }
+    const texto = gerarTextoComprasSelecionadas({
+      clienteNome: selecionado.nome,
+      compras: marcadas.map(compraParaTexto),
+      saldoTotal: Number(selecionado.saldo_devedor),
+      catalogoUrl: catalogoUrl(),
+    });
+    abrirWhatsApp(selecionado.telefone, texto);
+  };
+
 
 
   // ============ EDITAR VENCIMENTO ============
