@@ -261,6 +261,20 @@ function CadernetaPage() {
     });
   }, [vendas, pagamentos, itensPorVenda]);
 
+  // Compras ainda em aberto (não quitadas)
+  const vendasEmAberto = useMemo(
+    () => vendas.filter((v) => v.status !== "paga" && v.cobranca_status !== "paga"),
+    [vendas],
+  );
+
+  const totalSelecionado = useMemo(
+    () =>
+      vendasEmAberto
+        .filter((v) => selecionadas.includes(v.id))
+        .reduce((s, v) => s + Number(v.total), 0),
+    [vendasEmAberto, selecionadas],
+  );
+
 
   const totalDevedor = useMemo(
     () => clientes.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
