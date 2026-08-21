@@ -1081,15 +1081,7 @@ function CadernetaPage() {
               />
             </div>
 
-              <div>
-                <Label>Data do pagamento</Label>
-                <Input
-                  type="datetime-local"
-                  value={pagData}
-                  onChange={(e) => setPagData(e.target.value)}
-                />
-              </div>
-            </div>
+
             <div>
               <Label>Observações</Label>
               <Textarea
