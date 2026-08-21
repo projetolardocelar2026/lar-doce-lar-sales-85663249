@@ -691,7 +691,7 @@ function CadernetaPage() {
                       disabled={!selecionado.telefone}
                       title={!selecionado.telefone ? "Cliente sem telefone" : "Enviar caderneta"}
                     >
-                      <Send className="h-4 w-4 mr-1" /> Enviar Caderneta pelo WhatsApp
+                      <Send className="h-4 w-4 mr-1" /> Enviar Extrato (em aberto)
                     </Button>
                     <Button
                       onClick={() => abrirPagamento()}
