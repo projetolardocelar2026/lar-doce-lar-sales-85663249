@@ -1,5 +1,5 @@
 // Geração de cupom de venda e abertura do WhatsApp.
-import { brl, formaPagamentoLabel, STORE_NAME } from "./format";
+import { brl, formaPagamentoLabel, STORE_NAME, PIX_KEY, PIX_TITULAR } from "./format";
 import { onlyDigits } from "./validators";
 
 export type CupomItem = { nome: string; quantidade: number; preco: number };
