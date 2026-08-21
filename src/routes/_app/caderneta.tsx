@@ -969,38 +969,118 @@ function CadernetaPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={pagMisto} onCheckedChange={(c) => setPagMisto(!!c)} />
+              Pagamento misto (mais de uma forma)
+            </label>
+
+            {!pagMisto ? (
+              <>
+                <div>
+                  <Label>Valor recebido</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    value={pagValor}
+                    onChange={(e) => setPagValor(e.target.value)}
+                    placeholder="0,00"
+                    autoFocus
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Saldo atual: {brl(selecionado?.saldo_devedor ?? 0)}
+                  </div>
+                </div>
+                <div>
+                  <Label>Forma de pagamento</Label>
+                  <Select value={pagForma} onValueChange={setPagForma}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FORMAS_PAGAMENTO.map((f) => (
+                        <SelectItem key={f.v} value={f.v}>
+                          {f.l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label>Formas e valores</Label>
+                {pagPartes.map((p, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <Select
+                      value={p.forma}
+                      onValueChange={(val) =>
+                        setPagPartes((prev) =>
+                          prev.map((x, i) => (i === idx ? { ...x, forma: val } : x)),
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FORMAS_PAGAMENTO.map((f) => (
+                          <SelectItem key={f.v} value={f.v}>
+                            {f.l}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      placeholder="0,00"
+                      value={p.valor}
+                      onChange={(e) =>
+                        setPagPartes((prev) =>
+                          prev.map((x, i) => (i === idx ? { ...x, valor: e.target.value } : x)),
+                        )
+                      }
+                    />
+                    {pagPartes.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPagPartes((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        ✕
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagPartes((prev) => [...prev, { forma: "dinheiro", valor: "" }])}
+                >
+                  + Adicionar forma
+                </Button>
+                <div className="flex justify-between text-sm border-t pt-2">
+                  <span className="text-muted-foreground">
+                    Saldo atual: {brl(selecionado?.saldo_devedor ?? 0)}
+                  </span>
+                  <span className="font-semibold">Total: {brl(totalMisto)}</span>
+                </div>
+              </div>
+            )}
+
             <div>
-              <Label>Valor recebido</Label>
+              <Label>Data do pagamento</Label>
               <Input
-                type="number"
-                step="0.01"
-                min="0"
-                inputMode="decimal"
-                value={pagValor}
-                onChange={(e) => setPagValor(e.target.value)}
-                placeholder="0,00"
-                autoFocus
+                type="datetime-local"
+                value={pagData}
+                onChange={(e) => setPagData(e.target.value)}
               />
-              <div className="text-xs text-muted-foreground mt-1">
-                Saldo atual: {brl(selecionado?.saldo_devedor ?? 0)}
-              </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Forma de pagamento</Label>
-                <Select value={pagForma} onValueChange={setPagForma}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FORMAS_PAGAMENTO.map((f) => (
-                      <SelectItem key={f.v} value={f.v}>
-                        {f.l}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
               <div>
                 <Label>Data do pagamento</Label>
                 <Input
