@@ -754,6 +754,34 @@ function CadernetaPage() {
                       </div>
                     ) : (
                       <div className="space-y-3">
+                        {vendasEmAberto.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-2">
+                            <label className="flex items-center gap-2 text-xs">
+                              <Checkbox
+                                checked={
+                                  selecionadas.length > 0 &&
+                                  selecionadas.length === vendasEmAberto.length
+                                }
+                                onCheckedChange={(c) =>
+                                  setSelecionadas(c ? vendasEmAberto.map((x) => x.id) : [])
+                                }
+                              />
+                              Selecionar todas em aberto
+                            </label>
+                            <span className="text-xs text-muted-foreground">
+                              {selecionadas.length} selecionada(s) · {brl(totalSelecionado)}
+                            </span>
+                            <Button
+                              size="sm"
+                              className="ml-auto"
+                              onClick={enviarComprasSelecionadas}
+                              disabled={selecionadas.length === 0 || !selecionado.telefone}
+                              title={!selecionado.telefone ? "Cliente sem telefone" : undefined}
+                            >
+                              <Send className="h-4 w-4 mr-1" /> Enviar Compras Selecionadas no WhatsApp
+                            </Button>
+                          </div>
+                        )}
                         {vendas.map((v) => {
                           const atraso = diasAtraso(v.vencimento_caderneta);
                           const paga = v.status === "paga" || v.cobranca_status === "paga";
@@ -761,9 +789,24 @@ function CadernetaPage() {
                           const statusVar: "default" | "destructive" | "secondary" =
                             paga ? "secondary" : atraso > 0 ? "destructive" : "default";
                           const itens = itensPorVenda[v.id] ?? [];
+                          const marcada = selecionadas.includes(v.id);
                           return (
-                            <div key={v.id} className="rounded-md border p-3">
+                            <div
+                              key={v.id}
+                              className={`rounded-md border p-3 ${marcada ? "ring-1 ring-primary bg-primary/5" : ""}`}
+                            >
                               <div className="flex flex-wrap items-center gap-2">
+                                {!paga && (
+                                  <Checkbox
+                                    checked={marcada}
+                                    onCheckedChange={(c) =>
+                                      setSelecionadas((prev) =>
+                                        c ? [...prev, v.id] : prev.filter((x) => x !== v.id),
+                                      )
+                                    }
+                                    aria-label="Selecionar compra para envio"
+                                  />
+                                )}
                                 <Badge variant={statusVar}>{statusLabel}</Badge>
                                 <span className="text-sm font-medium">{fmtDate(v.data_venda)}</span>
                                 <span className="text-xs text-muted-foreground">
@@ -777,6 +820,7 @@ function CadernetaPage() {
                                 </span>
                                 <span className="ml-auto font-semibold">{brl(v.total)}</span>
                               </div>
+
 
                               <div className="mt-2 space-y-1">
                                 {itens.length === 0 ? (
