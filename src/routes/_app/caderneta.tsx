@@ -200,6 +200,7 @@ function CadernetaPage() {
 
   const abrirCliente = async (c: Cliente) => {
     setSelecionado(c);
+    setSelecionadas([]);
     await carregarHistorico(c.id);
   };
 
