@@ -126,6 +126,15 @@ function CadernetaPage() {
   const [pagForma, setPagForma] = useState<string>("dinheiro");
   const [pagData, setPagData] = useState(todayInput());
   const [pagObs, setPagObs] = useState("");
+  // Pagamento misto (múltiplas formas no mesmo recebimento)
+  const [pagMisto, setPagMisto] = useState(false);
+  const [pagPartes, setPagPartes] = useState<{ forma: string; valor: string }[]>([
+    { forma: "dinheiro", valor: "" },
+    { forma: "pix", valor: "" },
+  ]);
+
+  // Seleção manual de compras para envio no WhatsApp
+  const [selecionadas, setSelecionadas] = useState<string[]>([]);
 
   // Dialog: cupom individual
   const [cupomVenda, setCupomVenda] = useState<Venda | null>(null);
