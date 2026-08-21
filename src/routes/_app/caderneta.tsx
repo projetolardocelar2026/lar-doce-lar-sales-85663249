@@ -296,33 +296,66 @@ function CadernetaPage() {
     setPagForma("dinheiro");
     setPagData(todayInput());
     setPagObs("");
+    setPagMisto(false);
+    setPagPartes([
+      { forma: "dinheiro", valor: "" },
+      { forma: "pix", valor: "" },
+    ]);
     setPagOpen(true);
   };
 
+  const num = (s: string) => parseFloat((s || "").replace(",", ".")) || 0;
+  const totalMisto = pagPartes.reduce((s, p) => s + num(p.valor), 0);
+
   const registrarPagamento = async () => {
     if (!selecionado) return;
-    const valor = parseFloat(pagValor.replace(",", "."));
-    if (!valor || valor <= 0) {
-      toast.error("Informe um valor válido");
-      return;
+
+    type Forma = "dinheiro" | "pix" | "cartao_debito" | "cartao_credito";
+    let partes: { forma: Forma; valor: number }[];
+
+    if (pagMisto) {
+      partes = pagPartes
+        .filter((p) => num(p.valor) > 0)
+        .map((p) => ({ forma: p.forma as Forma, valor: num(p.valor) }));
+      if (partes.length === 0) {
+        toast.error("Informe pelo menos um valor");
+        return;
+      }
+    } else {
+      const valor = num(pagValor);
+      if (!valor || valor <= 0) {
+        toast.error("Informe um valor válido");
+        return;
+      }
+      partes = [{ forma: pagForma as Forma, valor }];
     }
-    if (valor > Number(selecionado.saldo_devedor) + 0.001) {
+
+    const total = partes.reduce((s, p) => s + p.valor, 0);
+    if (total > Number(selecionado.saldo_devedor) + 0.001) {
       toast.error("Valor maior que o saldo devedor");
       return;
     }
-    const { error } = await supabase.from("pagamentos_caderneta").insert({
-      cliente_id: selecionado.id,
-      valor,
-      forma_pagamento: pagForma as "dinheiro" | "pix" | "cartao_debito" | "cartao_credito",
-      data_pagamento: new Date(pagData).toISOString(),
-      observacoes: pagObs || null,
-      atendente_id: user?.id ?? null,
-    });
+
+    const dataISO = new Date(pagData).toISOString();
+    const { error } = await supabase.from("pagamentos_caderneta").insert(
+      partes.map((p) => ({
+        cliente_id: selecionado.id,
+        valor: p.valor,
+        forma_pagamento: p.forma,
+        data_pagamento: dataISO,
+        observacoes: pagObs || null,
+        atendente_id: user?.id ?? null,
+      })),
+    );
     if (error) {
       toast.error("Erro ao registrar pagamento: " + error.message);
       return;
     }
-    toast.success("Pagamento registrado e lançado no fluxo de caixa");
+    toast.success(
+      partes.length > 1
+        ? `Pagamento misto de ${brl(total)} registrado em ${partes.length} formas`
+        : "Pagamento registrado e lançado no fluxo de caixa",
+    );
     setPagOpen(false);
     await carregarClientes();
     const novo = clientes.find((c) => c.id === selecionado.id);
@@ -336,6 +369,7 @@ function CadernetaPage() {
     }
     await carregarHistorico(selecionado.id);
   };
+
 
   // ============ WHATSAPP ============
   const enviarCupomCompra = (v: Venda) => {
