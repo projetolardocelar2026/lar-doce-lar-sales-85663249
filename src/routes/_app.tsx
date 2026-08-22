@@ -89,7 +89,7 @@ function AppLayout() {
                   <Menu />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="p-0 bg-sidebar text-sidebar-foreground border-sidebar-border w-72">
+              <SheetContent side="left" className="p-0 bg-sidebar text-sidebar-foreground border-sidebar-border w-72 h-screen max-h-screen">
                 <SidebarContent isAdmin={isAdmin} onNavigate={() => setOpen(false)} onSignOut={signOut} />
               </SheetContent>
             </Sheet>
@@ -102,7 +102,7 @@ function AppLayout() {
 
       <div className="flex min-h-screen">
         {/* Sidebar desktop */}
-        <aside className="hidden lg:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
+        <aside className="hidden lg:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border h-screen max-h-screen">
           <SidebarContent isAdmin={isAdmin} onSignOut={signOut} />
         </aside>
 
@@ -132,7 +132,7 @@ function SidebarContent({
           <div className="text-xs opacity-80">Limpeza e Praticidade</div>
         </div>
       </div>
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto pb-8">
         {items.map((item) => {
           const Icon = item.icon;
           const active = location.pathname.startsWith(item.to);
