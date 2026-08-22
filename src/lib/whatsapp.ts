@@ -211,3 +211,35 @@ export function gerarTextoExtratoAberto(params: {
   L.push("Obrigada pela preferência! 💙");
   return L.join("\n");
 }
+
+// ===== Pedido do catálogo público (carrinho) =====
+export type PedidoItem = { nome: string; quantidade: number; preco: number };
+
+export function gerarTextoPedidoCatalogo(params: {
+  itens: PedidoItem[];
+  total: number;
+  entrega: "retirada" | "entrega";
+  nome?: string;
+  endereco?: string;
+  observacao?: string;
+}): string {
+  const { itens, total, entrega, nome, endereco, observacao } = params;
+  const L: string[] = [];
+  L.push(
+    entrega === "retirada"
+      ? "Olá! Gostaria de fazer o seguinte pedido para *retirada na loja*:"
+      : "Olá! Gostaria de fazer o seguinte pedido com *entrega*:"
+  );
+  L.push("");
+  for (const it of itens) {
+    L.push(`• ${it.quantidade}x ${it.nome} — ${brl(it.preco * it.quantidade)}`);
+  }
+  L.push("");
+  L.push(`*Total: ${brl(total)}*`);
+  if (nome) L.push(`👤 Nome: ${nome}`);
+  if (entrega === "entrega" && endereco) L.push(`📍 Endereço: ${endereco}`);
+  if (observacao) L.push(`📝 Obs.: ${observacao}`);
+  L.push("");
+  L.push(`_${STORE_NAME}_`);
+  return L.join("\n");
+}
