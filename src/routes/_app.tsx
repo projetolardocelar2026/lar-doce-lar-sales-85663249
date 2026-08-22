@@ -89,7 +89,7 @@ function AppLayout() {
                   <Menu />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="p-0 bg-sidebar text-sidebar-foreground border-sidebar-border w-72 h-screen max-h-screen">
+              <SheetContent side="left" className="p-0 bg-sidebar text-sidebar-foreground border-sidebar-border w-72 h-screen flex flex-col">
                 <SidebarContent isAdmin={isAdmin} onNavigate={() => setOpen(false)} onSignOut={signOut} />
               </SheetContent>
             </Sheet>
