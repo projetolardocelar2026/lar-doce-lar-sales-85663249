@@ -124,7 +124,7 @@ function SidebarContent({
   const items = NAV.filter((n) => !n.adminOnly || isAdmin);
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       <div className="p-5 border-b border-sidebar-border flex items-center gap-3">
         <Logo size={44} />
         <div>
@@ -132,7 +132,10 @@ function SidebarContent({
           <div className="text-xs opacity-80">Limpeza e Praticidade</div>
         </div>
       </div>
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto pb-8">
+      <nav
+        className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1 pb-20"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
         {items.map((item) => {
           const Icon = item.icon;
           const active = location.pathname.startsWith(item.to);
@@ -154,7 +157,7 @@ function SidebarContent({
           );
         })}
       </nav>
-      <div className="p-3 border-t border-sidebar-border space-y-1">
+      <div className="p-3 border-t border-sidebar-border space-y-1 pb-20">
         <Link to="/" onClick={onNavigate} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-sidebar-accent">
           <Store className="h-5 w-5" /> <span>Ver vitrine</span>
         </Link>
@@ -165,7 +168,7 @@ function SidebarContent({
           <LogOut className="h-5 w-5" /> <span>Sair</span>
         </button>
       </div>
-    </>
+    </div>
   );
 }
 
