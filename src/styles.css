@@ -43,6 +43,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-finance-income: var(--finance-income);
+  --color-finance-expense: var(--finance-expense);
+  --color-finance-profit: var(--finance-profit);
+  --color-finance-loss: var(--finance-loss);
 }
 
 /*
@@ -88,6 +92,11 @@
 
   --warning: oklch(0.78 0.16 75);
   --warning-foreground: oklch(0.25 0.05 75);
+
+  --finance-income: oklch(0.65 0.18 155);
+  --finance-expense: oklch(0.62 0.22 25);
+  --finance-profit: oklch(0.63 0.16 235);
+  --finance-loss: oklch(0.73 0.17 70);
 
   --border: oklch(0.9 0.015 240);
   --input: oklch(0.92 0.012 240);
@@ -152,3 +161,29 @@
 @utility shadow-elevated   { box-shadow: var(--shadow-elevated); }
 @utility shadow-glow       { box-shadow: var(--shadow-glow); }
 @utility transition-smooth { transition: var(--transition-smooth); }
+
+@utility finance-panel {
+  background: linear-gradient(145deg, color-mix(in oklab, var(--card) 90%, var(--brand-sky) 10%), var(--card));
+  border-color: color-mix(in oklab, var(--brand-sky) 28%, var(--border));
+  box-shadow: 0 18px 48px oklch(0.25 0.08 255 / 0.1), inset 0 1px 0 oklch(1 0 0 / 0.55);
+  backdrop-filter: blur(18px) saturate(135%);
+}
+
+@utility finance-kpi {
+  animation: finance-rise 0.55s ease-out both;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  &:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in oklab, var(--brand-sky) 55%, var(--border));
+    box-shadow: 0 16px 36px oklch(0.25 0.08 255 / 0.14);
+  }
+}
+
+@keyframes finance-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .finance-kpi { animation: none; transition: none; }
+}

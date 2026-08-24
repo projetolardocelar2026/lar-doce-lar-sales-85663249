@@ -37,6 +37,14 @@ const empty: FormState = {
   status: "pendente", forma_pagamento: "", observacoes: "", recorrente: false,
 };
 
+const CATEGORIAS_DESPESA = [
+  "Fornecedores",
+  "Aluguel / Despesas Fixas",
+  "Manutenção",
+  "Avarias / Quebras",
+  "Outros",
+] as const;
+
 const STATUS_CFG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   pendente: { label: "Pendente", variant: "secondary" },
   paga: { label: "Paga", variant: "default" },
@@ -253,8 +261,14 @@ function ContasPagarPage() {
               <Input value={form.fornecedor ?? ""} onChange={(e) => setForm({ ...form, fornecedor: e.target.value })} />
             </div>
             <div><Label>Categoria</Label>
-              <Input placeholder="Ex.: Aluguel, Energia, Mercadoria" value={form.categoria ?? ""}
-                onChange={(e) => setForm({ ...form, categoria: e.target.value })} />
+              <Select value={form.categoria || undefined} onValueChange={(categoria) => setForm({ ...form, categoria })}>
+                <SelectTrigger><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS_DESPESA.map((categoria) => (
+                    <SelectItem key={categoria} value={categoria}>{categoria}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div><Label>Valor *</Label>
               <Input type="number" min={0} step="0.01" value={form.valor}

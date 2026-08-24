@@ -12,16 +12,20 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  PieChart, Pie, Cell, Legend, LineChart, Line,
+  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area,
 } from "recharts";
 import { downloadCSV, downloadTablePDF } from "@/lib/exporters";
-import { Download, FileSpreadsheet, FileText, Trophy, AlertTriangle, Package } from "lucide-react";
+import {
+  Download, FileSpreadsheet, FileText, Trophy, AlertTriangle, Package,
+  ArrowDownRight, ArrowUpRight, CircleDollarSign, ShieldAlert,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_app/relatorios")({
   component: Relatorios,
 });
 
 const PIE_COLORS = ["#0EA5E9", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
+const EXPENSE_COLORS = ["var(--finance-profit)", "var(--finance-loss)", "var(--finance-income)", "var(--finance-expense)", "var(--muted-foreground)"];
 
 type Venda = {
   id: string;
@@ -42,6 +46,8 @@ type Item = {
 type Cliente = { id: string; nome: string };
 type Produto = { id: string; nome: string; estoque: number; estoque_minimo: number | null; ativo: boolean; categoria_id: string | null; preco: number };
 type Categoria = { id: string; nome: string };
+type Movimento = { tipo: string; valor: number; data_movimento: string };
+type ContaFinanceira = { categoria: string | null; valor: number; status: string; data_pagamento: string | null };
 
 function Relatorios() {
   const hoje = new Date();
@@ -58,25 +64,33 @@ function Relatorios() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [movimentos, setMovimentos] = useState<Movimento[]>([]);
+  const [contasFinanceiras, setContasFinanceiras] = useState<ContaFinanceira[]>([]);
 
   const carregar = async () => {
     setLoading(true);
     const ini = new Date(inicio + "T00:00:00").toISOString();
     const fimISO = new Date(fim + "T23:59:59").toISOString();
 
-    const [{ data: v }, { data: c }, { data: p }, { data: cats }] = await Promise.all([
+    const [{ data: v }, { data: c }, { data: p }, { data: cats }, { data: mov }, { data: contas }] = await Promise.all([
       supabase.from("vendas").select("id,total,forma_pagamento,data_venda,cliente_id,status")
         .gte("data_venda", ini).lte("data_venda", fimISO).neq("status", "cancelada")
         .order("data_venda", { ascending: false }),
       supabase.from("clientes").select("id,nome"),
       supabase.from("produtos").select("id,nome,estoque,estoque_minimo,ativo,categoria_id,preco"),
       supabase.from("categorias").select("id,nome").eq("ativa", true).order("ordem"),
+      supabase.from("fluxo_caixa").select("tipo,valor,data_movimento")
+        .gte("data_movimento", ini).lte("data_movimento", fimISO),
+      supabase.from("contas_pagar").select("categoria,valor,status,data_pagamento")
+        .eq("status", "paga").gte("data_pagamento", ini).lte("data_pagamento", fimISO),
     ]);
     const vendasArr = (v as Venda[]) || [];
     setVendas(vendasArr);
     setClientes((c as Cliente[]) || []);
     setProdutos((p as Produto[]) || []);
     setCategorias((cats as Categoria[]) || []);
+    setMovimentos((mov as Movimento[]) || []);
+    setContasFinanceiras((contas as ContaFinanceira[]) || []);
 
     if (vendasArr.length > 0) {
       const ids = vendasArr.map(x => x.id);
@@ -221,6 +235,44 @@ function Relatorios() {
     ? "Todas categorias"
     : (categorias.find(c => c.id === categoriaFiltro)?.nome ?? "Categoria");
 
+  const financeiro = useMemo(() => {
+    let entradas = 0;
+    let saidas = 0;
+    movimentos.forEach((movimento) => {
+      if (movimento.tipo.startsWith("entrada")) entradas += Number(movimento.valor);
+      else saidas += Number(movimento.valor);
+    });
+    const avarias = contasFinanceiras
+      .filter((conta) => conta.categoria === "Avarias / Quebras")
+      .reduce((total, conta) => total + Number(conta.valor), 0);
+    return { entradas, saidas, lucro: entradas - saidas, avarias };
+  }, [movimentos, contasFinanceiras]);
+
+  const evolucaoFinanceira = useMemo(() => {
+    const porData = new Map<string, { data: string; entradas: number; saidas: number }>();
+    movimentos.forEach((movimento) => {
+      const dataMovimento = new Date(movimento.data_movimento).toISOString().slice(0, 10);
+      const atual = porData.get(dataMovimento) ?? { data: dataMovimento, entradas: 0, saidas: 0 };
+      if (movimento.tipo.startsWith("entrada")) atual.entradas += Number(movimento.valor);
+      else atual.saidas += Number(movimento.valor);
+      porData.set(dataMovimento, atual);
+    });
+    let acumulado = 0;
+    return Array.from(porData.values()).sort((a, b) => a.data.localeCompare(b.data)).map((dia) => {
+      acumulado += dia.entradas - dia.saidas;
+      return { ...dia, label: dia.data.slice(5), saldo: acumulado };
+    });
+  }, [movimentos]);
+
+  const despesasPorCategoria = useMemo(() => {
+    const mapa = new Map<string, number>();
+    contasFinanceiras.forEach((conta) => {
+      const categoria = conta.categoria || "Outros";
+      mapa.set(categoria, (mapa.get(categoria) ?? 0) + Number(conta.valor));
+    });
+    return Array.from(mapa, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [contasFinanceiras]);
+
   const exportarCSV = () => {
     downloadCSV(`relatorio-vendas-${inicio}-${fim}.csv`, vendasFiltradas.map(v => ({
       Data: fmtDateOnly(v.data_venda),
@@ -297,6 +349,75 @@ function Relatorios() {
           Filtrando por <Badge variant="secondary" className="ml-1">{catNome}</Badge>
         </div>
       )}
+
+      <section className="mb-8" aria-labelledby="dashboard-financeiro-title">
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 id="dashboard-financeiro-title" className="text-xl font-bold">Dashboard financeiro</h2>
+            <p className="text-sm text-muted-foreground">Visão real de entradas, despesas, resultado e perdas no período</p>
+          </div>
+          <Badge variant="outline" className="w-fit">Atualizado pelo fluxo de caixa</Badge>
+        </div>
+
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <FinanceKPI label="Total de Entradas / Vendas" value={financeiro.entradas} icon={ArrowUpRight} tone="income" delay="0ms" />
+          <FinanceKPI label="Total de Saídas / Despesas" value={financeiro.saidas} icon={ArrowDownRight} tone="expense" delay="70ms" />
+          <FinanceKPI label="Lucro Líquido Real" value={financeiro.lucro} icon={CircleDollarSign} tone="profit" delay="140ms" />
+          <FinanceKPI label="Avarias / Quebras" value={financeiro.avarias} icon={ShieldAlert} tone="loss" delay="210ms" />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+          <Card className="finance-panel xl:col-span-3">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Evolução do fluxo de caixa</CardTitle>
+              <p className="text-xs text-muted-foreground">Saldo líquido acumulado ao longo do período</p>
+            </CardHeader>
+            <CardContent className="h-72 px-2 pb-4 sm:px-5">
+              {evolucaoFinanceira.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Sem movimentações no período.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={evolucaoFinanceira} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="financeGlow" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--finance-profit)" stopOpacity={0.55} />
+                        <stop offset="100%" stopColor="var(--finance-profit)" stopOpacity={0.03} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="var(--border)" strokeDasharray="4 5" vertical={false} />
+                    <XAxis dataKey="label" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${Math.round(v / 1000)}k`} />
+                    <Tooltip formatter={(value: number) => brl(value)} />
+                    <Area type="monotone" dataKey="saldo" name="Saldo líquido" stroke="var(--finance-profit)" strokeWidth={3} fill="url(#financeGlow)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="finance-panel xl:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Despesas por categoria</CardTitle>
+              <p className="text-xs text-muted-foreground">Contas pagas no período selecionado</p>
+            </CardHeader>
+            <CardContent className="h-72 px-2 pb-4 sm:px-4">
+              {despesasPorCategoria.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Sem despesas categorizadas.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={despesasPorCategoria} dataKey="value" nameKey="name" innerRadius={55} outerRadius={88} paddingAngle={4} cornerRadius={4}>
+                      {despesasPorCategoria.map((item, index) => <Cell key={item.name} fill={EXPENSE_COLORS[index % EXPENSE_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => brl(value)} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </section>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -612,6 +733,40 @@ function KPI({ label, value }: { label: string; value: string }) {
       <CardContent className="p-4">
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className="text-xl md:text-2xl font-bold text-primary mt-1">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+type FinanceTone = "income" | "expense" | "profit" | "loss";
+
+const FINANCE_TONES: Record<FinanceTone, { icon: string; value: string; glow: string }> = {
+  income: { icon: "bg-finance-income/15 text-finance-income", value: "text-finance-income", glow: "border-finance-income/30" },
+  expense: { icon: "bg-finance-expense/15 text-finance-expense", value: "text-finance-expense", glow: "border-finance-expense/30" },
+  profit: { icon: "bg-finance-profit/15 text-finance-profit", value: "text-finance-profit", glow: "border-finance-profit/30" },
+  loss: { icon: "bg-finance-loss/15 text-finance-loss", value: "text-finance-loss", glow: "border-finance-loss/30" },
+};
+
+function FinanceKPI({
+  label, value, icon: Icon, tone, delay,
+}: {
+  label: string;
+  value: number;
+  icon: typeof ArrowUpRight;
+  tone: FinanceTone;
+  delay: string;
+}) {
+  const classes = FINANCE_TONES[tone];
+  return (
+    <Card className={`finance-panel finance-kpi overflow-hidden ${classes.glow}`} style={{ animationDelay: delay }}>
+      <CardContent className="flex items-center gap-3 p-4 sm:p-5">
+        <div className={`flex size-11 shrink-0 items-center justify-center rounded-lg ${classes.icon}`}>
+          <Icon className="size-5" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-xs font-medium text-muted-foreground">{label}</div>
+          <div className={`mt-1 truncate text-xl font-bold md:text-2xl ${classes.value}`}>{brl(value)}</div>
+        </div>
       </CardContent>
     </Card>
   );

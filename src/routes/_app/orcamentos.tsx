@@ -9,6 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -20,7 +24,7 @@ import { brl, fmtDate, STORE_NAME } from "@/lib/format";
 import { downloadTablePDF } from "@/lib/exporters";
 import { abrirWhatsApp } from "@/lib/whatsapp";
 import {
-  FileText, Plus, Trash2, Search, Check, MessageCircle, ArrowRight, X,
+  FileText, Plus, Trash2, Search, Check, MessageCircle, ArrowRight, X, ChevronsUpDown, UserRound,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/orcamentos")({
@@ -59,6 +63,7 @@ function OrcamentosPage() {
     observacoes: string; itens: Item[]; busca: string;
   }>({ clienteId: "", clienteNome: "", validade: "", observacoes: "", itens: [], busca: "" });
   const [detalhe, setDetalhe] = useState<Orc | null>(null);
+  const [clienteOpen, setClienteOpen] = useState(false);
 
   const carregar = async () => {
     setLoading(true);
@@ -315,13 +320,59 @@ function OrcamentosPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="md:col-span-2">
               <Label>Cliente</Label>
-              <Select value={form.clienteId || "none"} onValueChange={(v) => setForm((f) => ({ ...f, clienteId: v === "none" ? "" : v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione (opcional)" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem cliente</SelectItem>
-                  {clientes.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Popover open={clienteOpen} onOpenChange={setClienteOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={clienteOpen}
+                    className="mt-1 w-full justify-between font-normal"
+                  >
+                    <span className="flex min-w-0 items-center gap-2 truncate">
+                      <UserRound className="size-4 shrink-0 text-muted-foreground" />
+                      {form.clienteId
+                        ? clientes.find((c) => c.id === form.clienteId)?.nome
+                        : "Buscar cliente (opcional)"}
+                    </span>
+                    <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Digite o nome do cliente..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="Sem cliente"
+                          onSelect={() => {
+                            setForm((f) => ({ ...f, clienteId: "" }));
+                            setClienteOpen(false);
+                          }}
+                        >
+                          <Check className={`size-4 ${!form.clienteId ? "opacity-100" : "opacity-0"}`} />
+                          Sem cliente
+                        </CommandItem>
+                        {clientes.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={c.nome}
+                            keywords={c.telefone ? [c.telefone] : undefined}
+                            onSelect={() => {
+                              setForm((f) => ({ ...f, clienteId: c.id, clienteNome: "" }));
+                              setClienteOpen(false);
+                            }}
+                          >
+                            <Check className={`size-4 ${form.clienteId === c.id ? "opacity-100" : "opacity-0"}`} />
+                            <span className="truncate">{c.nome}</span>
+                            {c.telefone && <span className="ml-auto text-xs text-muted-foreground">{c.telefone}</span>}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <Label>Validade</Label>
