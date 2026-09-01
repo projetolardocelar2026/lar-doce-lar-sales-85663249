@@ -46,17 +46,17 @@ type Produto = {
   promo_fim: string | null;
 };
 
-const empty = {
-  nome: "",
-  descricao: "",
 // Máscara de moeda BRL: digita apenas números — "2530" vira "25,30"
-export function maskBRL(v: string): string {
+function maskBRL(v: string): string {
   const d = (v ?? "").replace(/\D/g, "").slice(0, 12);
   if (!d) return "";
   return (Number(d) / 100).toFixed(2).replace(".", ",");
 }
-export const parseBRL = (v: string) => parseFloat((v ?? "").replace(/\D/g, "")) / 100 || 0;
+const parseBRL = (v: string) => parseFloat((v ?? "").replace(/\D/g, "")) / 100 || 0;
 
+const empty = {
+  nome: "",
+  descricao: "",
   preco: "",
   preco_custo: "",
   estoque: "",
