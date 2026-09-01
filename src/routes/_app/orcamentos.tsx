@@ -65,18 +65,25 @@ function OrcamentosPage() {
   const [detalhe, setDetalhe] = useState<Orc | null>(null);
   const [clienteOpen, setClienteOpen] = useState(false);
 
+  const [sessaoCaixaId, setSessaoCaixaId] = useState<string | null>(null);
+
   const carregar = async () => {
     setLoading(true);
-    const [{ data: o }, { data: cl }, { data: p }] = await Promise.all([
+    const [{ data: o }, { data: cl }, { data: p }, { data: sess }] = await Promise.all([
       supabase.from("orcamentos").select("*").order("data_orcamento", { ascending: false }),
       supabase.from("clientes").select("id,nome,telefone").eq("ativo", true).order("nome"),
       supabase.from("produtos").select("id,nome,preco,estoque,categoria_id").eq("ativo", true).order("nome"),
+      user
+        ? supabase.from("caixa_sessoes").select("id").eq("operador_id", user.id).eq("status", "aberta").maybeSingle()
+        : Promise.resolve({ data: null } as any),
     ]);
     setOrcs((o ?? []) as Orc[]);
     setClientes((cl ?? []) as Cliente[]);
     setProdutos((p ?? []) as Produto[]);
+    setSessaoCaixaId((sess as any)?.id ?? null);
     setLoading(false);
   };
+
 
   useEffect(() => { carregar(); }, []);
 
