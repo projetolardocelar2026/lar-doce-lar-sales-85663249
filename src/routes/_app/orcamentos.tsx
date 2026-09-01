@@ -178,7 +178,11 @@ function OrcamentosPage() {
 
   const converterEmVenda = async (o: Orc) => {
     if (o.status === "convertido") return;
-    if (!confirm("Converter este orçamento em venda? O estoque será baixado.")) return;
+    if (!sessaoCaixaId) {
+      toast.error("Abra o caixa antes de converter o orçamento em venda");
+      return;
+    }
+    if (!confirm("Converter este orçamento em venda? O estoque será baixado e o valor entra no caixa aberto.")) return;
     try {
       const { data: itens, error: ie } = await supabase
         .from("itens_orcamento").select("*").eq("orcamento_id", o.id);
@@ -191,11 +195,13 @@ function OrcamentosPage() {
           forma_pagamento: "dinheiro",
           total: o.total,
           status: "paga",
+          sessao_caixa_id: sessaoCaixaId,
           observacoes: `Convertido do orçamento #${o.numero}`,
           data_venda: new Date().toISOString(),
         })
         .select("id")
         .single();
+
       if (ve || !venda) throw ve;
       const itensVenda = (itens ?? []).map((i: any) => ({
         venda_id: venda.id,
