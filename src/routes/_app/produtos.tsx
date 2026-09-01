@@ -46,6 +46,14 @@ type Produto = {
   promo_fim: string | null;
 };
 
+// Máscara de moeda BRL: digita apenas números — "2530" vira "25,30"
+function maskBRL(v: string): string {
+  const d = (v ?? "").replace(/\D/g, "").slice(0, 12);
+  if (!d) return "";
+  return (Number(d) / 100).toFixed(2).replace(".", ",");
+}
+const parseBRL = (v: string) => parseFloat((v ?? "").replace(/\D/g, "")) / 100 || 0;
+
 const empty = {
   nome: "",
   descricao: "",
@@ -246,15 +254,15 @@ function ProdutosPage() {
     setForm({
       nome: p.nome,
       descricao: p.descricao ?? "",
-      preco: String(p.preco ?? ""),
-      preco_custo: p.preco_custo != null ? String(p.preco_custo) : "",
+      preco: p.preco != null ? Number(p.preco).toFixed(2).replace(".", ",") : "",
+      preco_custo: p.preco_custo != null ? Number(p.preco_custo).toFixed(2).replace(".", ",") : "",
       estoque: String(p.estoque ?? ""),
       estoque_minimo: p.estoque_minimo != null ? String(p.estoque_minimo) : "",
       categoria_id: p.categoria_id ?? "",
       codigo_barras: p.codigo_barras ?? "",
       destaque: p.destaque,
       ativo: p.ativo,
-      preco_promocional: p.preco_promocional != null ? String(p.preco_promocional) : "",
+      preco_promocional: p.preco_promocional != null ? Number(p.preco_promocional).toFixed(2).replace(".", ",") : "",
       promo_inicio: p.promo_inicio ?? "",
       promo_fim: p.promo_fim ?? "",
     });
@@ -286,17 +294,17 @@ function ProdutosPage() {
 
   async function save() {
     if (!form.nome.trim()) return toast.error("Informe o nome");
-    const preco = parseFloat(form.preco.replace(",", "."));
+    const preco = parseBRL(form.preco);
     if (isNaN(preco) || preco < 0) return toast.error("Preço inválido");
     setSaving(true);
     try {
       const imagem_url = await uploadImage();
-      const promoVal = form.preco_promocional ? parseFloat(form.preco_promocional.replace(",", ".")) : null;
+      const promoVal = form.preco_promocional ? parseBRL(form.preco_promocional) : null;
       const payload = {
         nome: form.nome.trim(),
         descricao: form.descricao.trim() || null,
         preco,
-        preco_custo: form.preco_custo ? parseFloat(form.preco_custo.replace(",", ".")) : null,
+        preco_custo: form.preco_custo ? parseBRL(form.preco_custo) : null,
         estoque: parseInt(form.estoque) || 0,
         estoque_minimo: form.estoque_minimo ? parseInt(form.estoque_minimo) : 0,
         categoria_id: form.categoria_id || null,
@@ -628,7 +636,7 @@ function ProdutosPage() {
               {form.preco_promocional && form.preco && (
                 <div className="text-xs text-muted-foreground">
                   Economia: <strong className="text-success">
-                    {brl(Math.max(0, parseFloat(form.preco.replace(",", ".") || "0") - parseFloat(form.preco_promocional.replace(",", ".") || "0")))}
+                    {brl(Math.max(0, parseBRL(form.preco) - parseBRL(form.preco_promocional)))}
                   </strong>
                   {form.promo_inicio && form.promo_fim && ` · de ${form.promo_inicio} até ${form.promo_fim}`}
                 </div>
