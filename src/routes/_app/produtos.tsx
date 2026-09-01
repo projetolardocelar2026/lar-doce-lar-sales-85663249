@@ -17,7 +17,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff, Video, Image as ImageIcon, X, Star, ArrowLeft, ArrowRight, Eye } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { analisarProdutoImagem } from "@/lib/ai-produto.functions";
+import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff, Video, Image as ImageIcon, X, Star, ArrowLeft, ArrowRight, Eye, Sparkles } from "lucide-react";
 import { brl } from "@/lib/format";
 import { precoVigente } from "@/lib/preco";
 
