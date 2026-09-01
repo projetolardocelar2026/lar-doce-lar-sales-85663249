@@ -17,7 +17,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff, Video, Image as ImageIcon, X, Star, ArrowLeft, ArrowRight, Eye } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { analisarProdutoImagem } from "@/lib/ai-produto.functions";
+import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff, Video, Image as ImageIcon, X, Star, ArrowLeft, ArrowRight, Eye, Sparkles } from "lucide-react";
 import { brl } from "@/lib/format";
 import { precoVigente } from "@/lib/preco";
 
@@ -79,6 +81,46 @@ function ProdutosPage() {
   const [midias, setMidias] = useState<{ id: string; url: string; tipo: "foto"|"arte"|"video"; ordem: number }[]>([]);
   const [pendingMidias, setPendingMidias] = useState<{ id: string; file: File; preview: string; tipo: "foto"|"arte"|"video" }[]>([]);
   const [uploadingMidia, setUploadingMidia] = useState(false);
+  const aiRef = useRef<HTMLInputElement>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const analisarIA = useServerFn(analisarProdutoImagem);
+
+  async function onFotoIA(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setAiLoading(true);
+    const t = toast.loading("Analisando foto com IA...");
+    try {
+      const base64: string = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(new Error("Falha ao ler a imagem"));
+        r.readAsDataURL(file);
+      });
+      const res = await analisarIA({ data: { imageBase64: base64, categorias: cats.map((c) => c.nome) } });
+      const cat = cats.find((c) => c.nome.toLowerCase().trim() === (res.categoria ?? "").toLowerCase().trim());
+      const desc = [res.marca ? `Marca: ${res.marca}` : "", res.descricao].filter(Boolean).join(" — ");
+      setForm((f) => ({
+        ...f,
+        nome: res.nome || f.nome,
+        descricao: desc || f.descricao,
+        categoria_id: cat?.id ?? f.categoria_id,
+        codigo_barras: res.codigo_barras || f.codigo_barras,
+      }));
+      if (!imgPreview) {
+        setImgFile(file);
+        setImgPreview(URL.createObjectURL(file));
+      }
+      toast.success(cat ? "Produto identificado pela IA" : "Produto identificado — confira a categoria");
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível identificar o produto");
+    } finally {
+      toast.dismiss(t);
+      setAiLoading(false);
+    }
+  }
+
 
   async function loadMidias(produtoId: string) {
     const { data } = await supabase
@@ -450,7 +492,27 @@ function ProdutosPage() {
                 >
                   <Upload className="h-4 w-4" /> {imgPreview ? "Trocar imagem" : "Enviar imagem"}
                 </Button>
+                <input
+                  ref={aiRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={onFotoIA}
+                />
+                <Button
+                  type="button"
+                  className="w-full mt-2"
+                  disabled={aiLoading}
+                  onClick={() => aiRef.current?.click()}
+                >
+                  <Sparkles className="h-4 w-4" /> {aiLoading ? "Analisando..." : "Cadastrar por Foto / IA"}
+                </Button>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Abre a câmera para fotografar o produto ou o código de barras.
+                </p>
               </div>
+
 
               <div className="flex-1 w-full space-y-3">
                 <div>

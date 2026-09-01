@@ -65,18 +65,25 @@ function OrcamentosPage() {
   const [detalhe, setDetalhe] = useState<Orc | null>(null);
   const [clienteOpen, setClienteOpen] = useState(false);
 
+  const [sessaoCaixaId, setSessaoCaixaId] = useState<string | null>(null);
+
   const carregar = async () => {
     setLoading(true);
-    const [{ data: o }, { data: cl }, { data: p }] = await Promise.all([
+    const [{ data: o }, { data: cl }, { data: p }, { data: sess }] = await Promise.all([
       supabase.from("orcamentos").select("*").order("data_orcamento", { ascending: false }),
       supabase.from("clientes").select("id,nome,telefone").eq("ativo", true).order("nome"),
       supabase.from("produtos").select("id,nome,preco,estoque,categoria_id").eq("ativo", true).order("nome"),
+      user
+        ? supabase.from("caixa_sessoes").select("id").eq("operador_id", user.id).eq("status", "aberta").maybeSingle()
+        : Promise.resolve({ data: null } as any),
     ]);
     setOrcs((o ?? []) as Orc[]);
     setClientes((cl ?? []) as Cliente[]);
     setProdutos((p ?? []) as Produto[]);
+    setSessaoCaixaId((sess as any)?.id ?? null);
     setLoading(false);
   };
+
 
   useEffect(() => { carregar(); }, []);
 
@@ -171,7 +178,11 @@ function OrcamentosPage() {
 
   const converterEmVenda = async (o: Orc) => {
     if (o.status === "convertido") return;
-    if (!confirm("Converter este orçamento em venda? O estoque será baixado.")) return;
+    if (!sessaoCaixaId) {
+      toast.error("Abra o caixa antes de converter o orçamento em venda");
+      return;
+    }
+    if (!confirm("Converter este orçamento em venda? O estoque será baixado e o valor entra no caixa aberto.")) return;
     try {
       const { data: itens, error: ie } = await supabase
         .from("itens_orcamento").select("*").eq("orcamento_id", o.id);
@@ -184,11 +195,13 @@ function OrcamentosPage() {
           forma_pagamento: "dinheiro",
           total: o.total,
           status: "paga",
+          sessao_caixa_id: sessaoCaixaId,
           observacoes: `Convertido do orçamento #${o.numero}`,
           data_venda: new Date().toISOString(),
         })
         .select("id")
         .single();
+
       if (ve || !venda) throw ve;
       const itensVenda = (itens ?? []).map((i: any) => ({
         venda_id: venda.id,
