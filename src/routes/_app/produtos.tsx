@@ -79,6 +79,46 @@ function ProdutosPage() {
   const [midias, setMidias] = useState<{ id: string; url: string; tipo: "foto"|"arte"|"video"; ordem: number }[]>([]);
   const [pendingMidias, setPendingMidias] = useState<{ id: string; file: File; preview: string; tipo: "foto"|"arte"|"video" }[]>([]);
   const [uploadingMidia, setUploadingMidia] = useState(false);
+  const aiRef = useRef<HTMLInputElement>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const analisarIA = useServerFn(analisarProdutoImagem);
+
+  async function onFotoIA(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setAiLoading(true);
+    const t = toast.loading("Analisando foto com IA...");
+    try {
+      const base64: string = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(new Error("Falha ao ler a imagem"));
+        r.readAsDataURL(file);
+      });
+      const res = await analisarIA({ data: { imageBase64: base64, categorias: cats.map((c) => c.nome) } });
+      const cat = cats.find((c) => c.nome.toLowerCase().trim() === (res.categoria ?? "").toLowerCase().trim());
+      const desc = [res.marca ? `Marca: ${res.marca}` : "", res.descricao].filter(Boolean).join(" — ");
+      setForm((f) => ({
+        ...f,
+        nome: res.nome || f.nome,
+        descricao: desc || f.descricao,
+        categoria_id: cat?.id ?? f.categoria_id,
+        codigo_barras: res.codigo_barras || f.codigo_barras,
+      }));
+      if (!imgPreview) {
+        setImgFile(file);
+        setImgPreview(URL.createObjectURL(file));
+      }
+      toast.success(cat ? "Produto identificado pela IA" : "Produto identificado — confira a categoria");
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível identificar o produto");
+    } finally {
+      toast.dismiss(t);
+      setAiLoading(false);
+    }
+  }
+
 
   async function loadMidias(produtoId: string) {
     const { data } = await supabase
