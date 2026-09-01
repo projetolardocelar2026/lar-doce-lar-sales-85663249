@@ -492,7 +492,27 @@ function ProdutosPage() {
                 >
                   <Upload className="h-4 w-4" /> {imgPreview ? "Trocar imagem" : "Enviar imagem"}
                 </Button>
+                <input
+                  ref={aiRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={onFotoIA}
+                />
+                <Button
+                  type="button"
+                  className="w-full mt-2"
+                  disabled={aiLoading}
+                  onClick={() => aiRef.current?.click()}
+                >
+                  <Sparkles className="h-4 w-4" /> {aiLoading ? "Analisando..." : "Cadastrar por Foto / IA"}
+                </Button>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Abre a câmera para fotografar o produto ou o código de barras.
+                </p>
               </div>
+
 
               <div className="flex-1 w-full space-y-3">
                 <div>
