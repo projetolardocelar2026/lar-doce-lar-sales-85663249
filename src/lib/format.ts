@@ -23,3 +23,6 @@ export const formaPagamentoLabel: Record<string, string> = {
   cartao_credito: "Cartão Crédito",
   caderneta: "Caderneta",
 };
+
+// Arredondamento monetário padrão (2 casas) — garante que carrinho, banco e relatórios batam.
+export const round2 = (n: number) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
