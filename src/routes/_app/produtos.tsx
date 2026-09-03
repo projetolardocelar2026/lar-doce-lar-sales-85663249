@@ -19,8 +19,10 @@ import {
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { analisarProdutoImagem } from "@/lib/ai-produto.functions";
-import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff, Video, Image as ImageIcon, X, Star, ArrowLeft, ArrowRight, Eye, Sparkles } from "lucide-react";
-import { brl } from "@/lib/format";
+import { Plus, Pencil, Trash2, Package, Search, Upload, ImageOff, Video, Image as ImageIcon, X, Star, ArrowLeft, ArrowRight, Eye, Sparkles, ScanBarcode, Wand2 } from "lucide-react";
+import { brl, round2 } from "@/lib/format";
+import { gerarCodigoInterno } from "@/lib/barcode";
+import { BarcodeScanner, beep } from "@/components/BarcodeScanner";
 import { precoVigente } from "@/lib/preco";
 
 export const Route = createFileRoute("/_app/produtos")({
@@ -92,13 +94,29 @@ function ProdutosPage() {
   const aiRef = useRef<HTMLInputElement>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const analisarIA = useServerFn(analisarProdutoImagem);
+  const [scanForm, setScanForm] = useState(false);
+  const [scanBusca, setScanBusca] = useState(false);
+  const [gerandoCodigo, setGerandoCodigo] = useState(false);
+
+  async function gerarCodigo() {
+    setGerandoCodigo(true);
+    try {
+      const codigo = await gerarCodigoInterno();
+      setForm((f) => ({ ...f, codigo_barras: codigo }));
+      toast.success("Código gerado: " + codigo);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao gerar código");
+    } finally {
+      setGerandoCodigo(false);
+    }
+  }
 
   const lucro = useMemo(() => {
     const venda = parseBRL(form.preco);
     const custo = parseBRL(form.preco_custo);
     if (!venda || !custo || custo <= 0) return null;
-    const markup = ((venda - custo) / custo) * 100;
-    const margem = ((venda - custo) / venda) * 100;
+    const markup = round2(((venda - custo) / custo) * 100);
+    const margem = round2(((venda - custo) / venda) * 100);
     return { markup, margem };
   }, [form.preco, form.preco_custo]);
 
@@ -314,6 +332,7 @@ function ProdutosPage() {
     if (!form.nome.trim()) return toast.error("Informe o nome");
     const preco = parseBRL(form.preco);
     if (isNaN(preco) || preco < 0) return toast.error("Preço inválido");
+    if (!form.codigo_barras.trim()) return toast.error("Informe o código de barras ou use \"Gerar código automático\"");
     setSaving(true);
     try {
       const imagem_url = await uploadImage();
@@ -321,16 +340,16 @@ function ProdutosPage() {
       const payload = {
         nome: form.nome.trim(),
         descricao: form.descricao.trim() || null,
-        preco,
-        preco_custo: form.preco_custo ? parseBRL(form.preco_custo) : null,
+        preco: round2(preco),
+        preco_custo: form.preco_custo ? round2(parseBRL(form.preco_custo)) : null,
         estoque: parseInt(form.estoque) || 0,
         estoque_minimo: form.estoque_minimo ? parseInt(form.estoque_minimo) : 0,
         categoria_id: form.categoria_id || null,
-        codigo_barras: form.codigo_barras.trim() || null,
+        codigo_barras: form.codigo_barras.trim(),
         destaque: form.destaque,
         ativo: form.ativo,
         imagem_url,
-        preco_promocional: promoVal && promoVal > 0 ? promoVal : null,
+        preco_promocional: promoVal && promoVal > 0 ? round2(promoVal) : null,
         promo_inicio: form.promo_inicio || null,
         promo_fim: form.promo_fim || null,
       };
@@ -606,12 +625,21 @@ function ProdutosPage() {
             )}
 
             <div>
-              <Label>Código de barras</Label>
-              <Input
-                value={form.codigo_barras}
-                onChange={(e) => setForm({ ...form, codigo_barras: e.target.value })}
-                placeholder="Opcional"
-              />
+              <Label>Código de barras *</Label>
+              <div className="flex gap-2">
+                <Input
+                  inputMode="numeric"
+                  value={form.codigo_barras}
+                  onChange={(e) => setForm({ ...form, codigo_barras: e.target.value })}
+                  placeholder="Obrigatório — bipe ou gere automaticamente"
+                />
+                <Button type="button" variant="sky" onClick={() => setScanForm(true)} title="Bipar com a câmera">
+                  <ScanBarcode className="h-5 w-5" /> Bipar
+                </Button>
+                <Button type="button" variant="outline" onClick={gerarCodigo} disabled={gerandoCodigo} title="Gerar código automático">
+                  <Wand2 className="h-4 w-4" /> {gerandoCodigo ? "Gerando…" : "Gerar"}
+                </Button>
+              </div>
             </div>
 
             <div className="rounded-xl border-2 border-accent/30 p-3 space-y-3 bg-accent/5">
