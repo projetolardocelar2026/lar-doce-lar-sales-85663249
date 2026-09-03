@@ -624,12 +624,7 @@ function ProdutosPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <Label>Preço promocional</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={form.preco_promocional}
-                    onChange={(e) => setForm({ ...form, preco_promocional: e.target.value })}
-                    placeholder="0,00"
-                  />
+                  <Input {...moneyProps("preco_promocional")} />
                 </div>
                 <div>
                   <Label>Início</Label>
