@@ -93,6 +93,24 @@ function ProdutosPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const analisarIA = useServerFn(analisarProdutoImagem);
 
+  const lucro = useMemo(() => {
+    const venda = parseBRL(form.preco);
+    const custo = parseBRL(form.preco_custo);
+    if (!venda || !custo || custo <= 0) return null;
+    const markup = ((venda - custo) / custo) * 100;
+    const margem = ((venda - custo) / venda) * 100;
+    return { markup, margem };
+  }, [form.preco, form.preco_custo]);
+
+  const moneyProps = (field: "preco" | "preco_custo" | "preco_promocional") => ({
+    inputMode: "decimal" as const,
+    value: form[field],
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+      setForm((f) => ({ ...f, [field]: maskBRL(e.target.value) }));
+    },
+    placeholder: "0,00",
+  });
+
   async function onFotoIA(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -554,21 +572,11 @@ function ProdutosPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <Label>Preço venda *</Label>
-                <Input
-                  inputMode="decimal"
-                  value={form.preco}
-                  onChange={(e) => setForm({ ...form, preco: e.target.value })}
-                  placeholder="0,00"
-                />
+                <Input {...moneyProps("preco")} />
               </div>
               <div>
                 <Label>Preço custo</Label>
-                <Input
-                  inputMode="decimal"
-                  value={form.preco_custo}
-                  onChange={(e) => setForm({ ...form, preco_custo: e.target.value })}
-                  placeholder="0,00"
-                />
+                <Input {...moneyProps("preco_custo")} />
               </div>
               <div>
                 <Label>Estoque</Label>
@@ -589,6 +597,13 @@ function ProdutosPage() {
                 />
               </div>
             </div>
+            {lucro && (
+              <div className="text-sm rounded-lg border bg-success/10 p-2 text-success">
+                Lucro: <strong>{lucro.markup.toFixed(1)}% (Markup)</strong>
+                {" · "}
+                Margem: <strong>{lucro.margem.toFixed(1)}%</strong>
+              </div>
+            )}
 
             <div>
               <Label>Código de barras</Label>
@@ -609,12 +624,7 @@ function ProdutosPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <Label>Preço promocional</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={form.preco_promocional}
-                    onChange={(e) => setForm({ ...form, preco_promocional: e.target.value })}
-                    placeholder="0,00"
-                  />
+                  <Input {...moneyProps("preco_promocional")} />
                 </div>
                 <div>
                   <Label>Início</Label>
