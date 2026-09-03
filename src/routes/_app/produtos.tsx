@@ -93,6 +93,24 @@ function ProdutosPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const analisarIA = useServerFn(analisarProdutoImagem);
 
+  const lucro = useMemo(() => {
+    const venda = parseBRL(form.preco);
+    const custo = parseBRL(form.preco_custo);
+    if (!venda || !custo || custo <= 0) return null;
+    const markup = ((venda - custo) / custo) * 100;
+    const margem = ((venda - custo) / venda) * 100;
+    return { markup, margem };
+  }, [form.preco, form.preco_custo]);
+
+  const moneyProps = (field: "preco" | "preco_custo" | "preco_promocional") => ({
+    inputMode: "decimal" as const,
+    value: form[field],
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+      setForm((f) => ({ ...f, [field]: maskBRL(e.target.value) }));
+    },
+    placeholder: "0,00",
+  });
+
   async function onFotoIA(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
