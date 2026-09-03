@@ -572,21 +572,11 @@ function ProdutosPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <Label>Preço venda *</Label>
-                <Input
-                  inputMode="decimal"
-                  value={form.preco}
-                  onChange={(e) => setForm({ ...form, preco: e.target.value })}
-                  placeholder="0,00"
-                />
+                <Input {...moneyProps("preco")} />
               </div>
               <div>
                 <Label>Preço custo</Label>
-                <Input
-                  inputMode="decimal"
-                  value={form.preco_custo}
-                  onChange={(e) => setForm({ ...form, preco_custo: e.target.value })}
-                  placeholder="0,00"
-                />
+                <Input {...moneyProps("preco_custo")} />
               </div>
               <div>
                 <Label>Estoque</Label>
@@ -607,6 +597,13 @@ function ProdutosPage() {
                 />
               </div>
             </div>
+            {lucro && (
+              <div className="text-sm rounded-lg border bg-success/10 p-2 text-success">
+                Lucro: <strong>{lucro.markup.toFixed(1)}% (Markup)</strong>
+                {" · "}
+                Margem: <strong>{lucro.margem.toFixed(1)}%</strong>
+              </div>
+            )}
 
             <div>
               <Label>Código de barras</Label>
