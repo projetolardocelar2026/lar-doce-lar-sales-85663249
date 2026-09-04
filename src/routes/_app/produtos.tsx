@@ -854,7 +854,7 @@ function ProdutosPage() {
         title="Bipar para buscar produto"
         onDetected={(code) => {
           setBusca(code);
-          const encontrado = produtos.find((p) => (p.codigo_barras ?? "") === code);
+          const encontrado = items.find((p) => (p.codigo_barras ?? "") === code);
           if (encontrado) toast.success(`Produto encontrado: ${encontrado.nome}`);
           else toast.error("Nenhum produto com este código: " + code);
         }}
