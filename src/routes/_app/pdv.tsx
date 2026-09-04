@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -29,6 +29,8 @@ import {
 } from "lucide-react";
 import { validateDocumento, validateTelefone, maskDocumento, maskTelefone } from "@/lib/validators";
 import { gerarTextoCupom, abrirWhatsApp } from "@/lib/whatsapp";
+import { BarcodeScanner, beep } from "@/components/BarcodeScanner";
+import { ScanBarcode } from "lucide-react";
 
 export const Route = createFileRoute("/_app/pdv")({
   component: PDVPage,
@@ -41,6 +43,7 @@ type Produto = {
   estoque: number;
   imagem_url: string | null;
   categoria_id: string | null;
+  codigo_barras: string | null;
   ativo: boolean;
   preco_promocional: number | null;
   promo_inicio: string | null;
@@ -109,12 +112,14 @@ function PDVPage() {
   const [reposQtd, setReposQtd] = useState("");
   const [repondo, setRepondo] = useState(false);
   const [pulseId, setPulseId] = useState<string | null>(null);
+  const [scanVenda, setScanVenda] = useState(false);
+  const buscaRef = useRef<HTMLInputElement>(null);
   const catalogoUrl = typeof window !== "undefined" ? `${window.location.origin}/` : "";
 
   const loadData = async () => {
     setLoading(true);
     const [{ data: p }, { data: c }, { data: cl }, { data: sess }] = await Promise.all([
-      supabase.from("produtos").select("id,nome,preco,estoque,imagem_url,categoria_id,ativo,preco_promocional,promo_inicio,promo_fim").eq("ativo", true).order("nome"),
+      supabase.from("produtos").select("id,nome,preco,estoque,imagem_url,categoria_id,codigo_barras,ativo,preco_promocional,promo_inicio,promo_fim").eq("ativo", true).order("nome"),
       supabase.from("categorias").select("id,nome").eq("ativa", true).order("ordem"),
       supabase.from("clientes").select("id,nome,telefone,saldo_devedor,limite_caderneta,saldo_credito").eq("ativo", true).order("nome"),
       user ? supabase.from("caixa_sessoes").select("id").eq("operador_id", user.id).eq("status", "aberta").maybeSingle() : Promise.resolve({ data: null } as any),
@@ -176,6 +181,21 @@ function PDVPage() {
         quantidade: 1, estoque: ignoreStock ? Math.max(p.estoque, 9999) : p.estoque, categoria_id: p.categoria_id,
       }];
     });
+  };
+
+  const biparCodigo = (codigo: string) => {
+    const cod = codigo.trim();
+    if (!cod) return;
+    const p = produtos.find((x) => (x.codigo_barras ?? "").trim() === cod);
+    if (!p) {
+      toast.error("Produto não cadastrado", { description: `Código ${cod}` });
+      return;
+    }
+    beep();
+    addToCart(p);
+    toast.success(`${p.nome} adicionado`);
+    setSearch("");
+    buscaRef.current?.focus();
   };
 
   const venderAssimMesmo = () => {
@@ -493,12 +513,23 @@ function PDVPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar produto…"
+                ref={buscaRef}
+                autoFocus
+                placeholder="Buscar produto ou bipar código…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && search.trim()) {
+                    e.preventDefault();
+                    biparCodigo(search);
+                  }
+                }}
                 className="pl-9"
               />
             </div>
+            <Button type="button" variant="secondary" onClick={() => setScanVenda(true)} title="Bipar código de barras">
+              <ScanBarcode className="h-5 w-5" /> Bipar
+            </Button>
             <Select value={catFilter} onValueChange={setCatFilter}>
               <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -951,6 +982,13 @@ function PDVPage() {
       </Dialog>
 
       {/* Estoque zerado */}
+      <BarcodeScanner
+        open={scanVenda}
+        onOpenChange={setScanVenda}
+        onDetected={biparCodigo}
+        title="Bipar produto para o carrinho"
+      />
+
       <Dialog open={!!estoqueZero} onOpenChange={(o) => !o && setEstoqueZero(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
