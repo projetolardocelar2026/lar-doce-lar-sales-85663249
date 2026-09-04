@@ -437,6 +437,9 @@ function ProdutosPage() {
               className="pl-9"
             />
           </div>
+          <Button type="button" variant="sky" onClick={() => setScanBusca(true)} title="Bipar código para buscar">
+            <ScanBarcode className="h-5 w-5" /> Bipar
+          </Button>
           <Select value={filtroCat} onValueChange={setFiltroCat}>
             <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -832,6 +835,30 @@ function ProdutosPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Scanner: preencher código no formulário */}
+      <BarcodeScanner
+        open={scanForm}
+        onOpenChange={setScanForm}
+        title="Bipar código de barras do produto"
+        onDetected={(code) => {
+          setForm((f) => ({ ...f, codigo_barras: code }));
+          toast.success("Código lido: " + code);
+        }}
+      />
+
+      {/* Scanner: buscar produto pelo código */}
+      <BarcodeScanner
+        open={scanBusca}
+        onOpenChange={setScanBusca}
+        title="Bipar para buscar produto"
+        onDetected={(code) => {
+          setBusca(code);
+          const encontrado = items.find((p) => (p.codigo_barras ?? "") === code);
+          if (encontrado) toast.success(`Produto encontrado: ${encontrado.nome}`);
+          else toast.error("Nenhum produto com este código: " + code);
+        }}
+      />
     </div>
   );
 }
