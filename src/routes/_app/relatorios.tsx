@@ -47,7 +47,9 @@ type Item = {
 };
 type Cliente = { id: string; nome: string };
 type Produto = { id: string; nome: string; estoque: number; estoque_minimo: number | null; ativo: boolean; categoria_id: string | null; preco: number };
+type Produto = { id: string; nome: string; estoque: number; estoque_minimo: number | null; ativo: boolean; categoria_id: string | null; preco: number; preco_custo: number | null; codigo_barras: string | null };
 type Categoria = { id: string; nome: string };
+
 type Movimento = { tipo: string; valor: number; data_movimento: string };
 type ContaFinanceira = { categoria: string | null; valor: number; status: string; data_pagamento: string | null };
 
