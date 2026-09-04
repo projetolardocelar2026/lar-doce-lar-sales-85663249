@@ -12,13 +12,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area,
+  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area, ComposedChart,
 } from "recharts";
 import { downloadCSV, downloadTablePDF } from "@/lib/exporters";
 import {
   Download, FileSpreadsheet, FileText, Trophy, AlertTriangle, Package,
   ArrowDownRight, ArrowUpRight, CircleDollarSign, ShieldAlert,
+  Boxes, TrendingUp, TrendingDown, Minus, PieChart as PieIcon, Users, Target,
 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_app/relatorios")({
   component: Relatorios,
@@ -44,8 +46,10 @@ type Item = {
   categoria_id: string | null;
 };
 type Cliente = { id: string; nome: string };
-type Produto = { id: string; nome: string; estoque: number; estoque_minimo: number | null; ativo: boolean; categoria_id: string | null; preco: number };
+type Produto = { id: string; nome: string; estoque: number; estoque_minimo: number | null; ativo: boolean; categoria_id: string | null; preco: number; preco_custo: number | null };
+
 type Categoria = { id: string; nome: string };
+
 type Movimento = { tipo: string; valor: number; data_movimento: string };
 type ContaFinanceira = { categoria: string | null; valor: number; status: string; data_pagamento: string | null };
 
