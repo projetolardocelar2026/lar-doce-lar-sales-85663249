@@ -12,13 +12,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area,
+  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area, ComposedChart,
 } from "recharts";
 import { downloadCSV, downloadTablePDF } from "@/lib/exporters";
 import {
   Download, FileSpreadsheet, FileText, Trophy, AlertTriangle, Package,
   ArrowDownRight, ArrowUpRight, CircleDollarSign, ShieldAlert,
+  Boxes, TrendingUp, TrendingDown, Minus, PieChart as PieIcon, Users, Target,
 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_app/relatorios")({
   component: Relatorios,
