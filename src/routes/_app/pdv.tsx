@@ -253,6 +253,9 @@ function PDVPage() {
 
   const addSplit = (formaAlvo?: Forma, valorAlvo?: number) => {
     const f = formaAlvo ?? splitForma;
+    if (f === "caderneta" && !clienteId) {
+      return toast.error("Selecione um cliente para vender na Caderneta");
+    }
     const v = valorAlvo ?? parseBRL(splitValor);
     if (v <= 0) return toast.error("Informe valor");
     if (splitsTotal + v > total + 0.001) return toast.error("Excede o total");
@@ -267,13 +270,17 @@ function PDVPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showSplit, splits.length]);
 
-  // Pagamento único em dinheiro: sugere o total como valor recebido.
+  // "Valor recebido em dinheiro" acompanha SEMPRE o valor alocado em dinheiro:
+  // venda simples em dinheiro → total; pagamento misto → soma das parcelas em dinheiro.
   useEffect(() => {
-    if (showCheckout && forma === "dinheiro" && splits.length === 0) {
-      setValorRecebido(maskBRL(String(Math.round(total * 100))));
+    if (!showCheckout) return;
+    if (splits.length === 0) {
+      if (forma === "dinheiro") setValorRecebido(maskBRL(String(Math.round(total * 100))));
+    } else if (dinheiroDevido > 0) {
+      setValorRecebido(maskBRL(String(Math.round(dinheiroDevido * 100))));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showCheckout, forma, splits.length]);
+  }, [showCheckout, forma, splits.length, dinheiroDevido]);
 
   const finalizar = async () => {
     if (cart.length === 0) return;
@@ -712,7 +719,13 @@ function PDVPage() {
                     const Icon = f.icon;
                     const active = forma === f.value;
                     return (
-                      <button key={f.value} type="button" onClick={() => setForma(f.value)}
+                      <button key={f.value} type="button" onClick={() => {
+                        if (f.value === "caderneta" && !clienteId) {
+                          toast.error("Selecione um cliente para vender na Caderneta");
+                          return;
+                        }
+                        setForma(f.value);
+                      }}
                         className={`px-2 py-2 border rounded-md flex items-center gap-1.5 text-xs transition ${active ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50"}`}>
                         <Icon className="h-3.5 w-3.5" />{f.label}
                       </button>
