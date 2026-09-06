@@ -26,3 +26,20 @@ export const formaPagamentoLabel: Record<string, string> = {
 
 // Arredondamento monetário padrão (2 casas) — garante que carrinho, banco e relatórios batam.
 export const round2 = (n: number) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+
+// ===== Máscara de moeda (entrada em centavos) =====
+/** Formata a digitação como moeda: "8" -> "R$ 0,08", "2530" -> "R$ 25,30". */
+export const maskBRL = (input: string): string => {
+  const digits = (input || "").replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  if (!digits) return "";
+  return brl(Number(digits) / 100);
+};
+
+/** Converte texto mascarado ("R$ 25,30") ou livre ("25,3") em número. */
+export const parseBRL = (input: string | null | undefined): number => {
+  if (!input) return 0;
+  const s = String(input).replace(/[^\d,.-]/g, "");
+  if (!s) return 0;
+  const norm = s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s;
+  return parseFloat(norm) || 0;
+};
