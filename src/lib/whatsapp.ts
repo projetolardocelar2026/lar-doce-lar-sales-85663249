@@ -34,6 +34,9 @@ export function gerarTextoCupom(v: CupomVenda): string {
   linhas.push("");
   linhas.push(`*Total:* ${brl(v.total)}`);
   linhas.push(`*Pagamento:* ${formaPagamentoLabel[v.formaPagamento] ?? v.formaPagamento}`);
+  if (v.troco != null && v.troco > 0) {
+    linhas.push(`💵 Valor Recebido: ${brl(v.valorRecebido ?? 0)} | Troco: ${brl(v.troco)}`);
+  }
   if (v.formaPagamento === "caderneta" && v.saldoCadernetaAtualizado != null) {
     linhas.push(`*Saldo atualizado da caderneta:* ${brl(v.saldoCadernetaAtualizado)}`);
   }
