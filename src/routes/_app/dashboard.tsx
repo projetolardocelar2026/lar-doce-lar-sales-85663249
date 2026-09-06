@@ -318,6 +318,53 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Comparativo semanal */}
+      <Card className="mb-6 border border-border/60 bg-card/80 backdrop-blur">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Comparativo Semanal
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Semana atual vs. semana anterior
+              </p>
+            </div>
+            <div className="flex items-center gap-4 md:gap-6">
+              <div className="text-center">
+                <div className="text-xs text-muted-foreground">Semana anterior</div>
+                <div className="text-lg font-bold">{loading ? "…" : brl(semanaComp?.anterior ?? 0)}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xs text-muted-foreground">Semana atual</div>
+                <div className="text-xl font-bold text-primary">{loading ? "…" : brl(semanaComp?.atual ?? 0)}</div>
+              </div>
+              <div className="text-center min-w-[90px]">
+                <div className="text-xs text-muted-foreground">Variação</div>
+                <div className="text-sm font-semibold">
+                  {loading || !semanaComp ? (
+                    <span className="text-muted-foreground">—</span>
+                  ) : semanaComp.delta === null ? (
+                    <span className="inline-flex items-center gap-1 text-muted-foreground">
+                      <Minus className="h-3.5 w-3.5" /> sem base
+                    </span>
+                  ) : (
+                    <span
+                      className={`inline-flex items-center gap-1 ${
+                        semanaComp.delta > 0 ? "text-emerald-600" : semanaComp.delta < 0 ? "text-rose-600" : "text-muted-foreground"
+                      }`}
+                    >
+                      {semanaComp.delta > 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : semanaComp.delta < 0 ? <ArrowDownRight className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
+                      {semanaComp.delta > 0 ? "+" : ""}{semanaComp.delta.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Meta do mês */}
       <Card className="mb-6 overflow-hidden">
         <CardHeader className="pb-3">
