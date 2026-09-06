@@ -367,6 +367,8 @@ function PDVPage() {
           itens: cart.map((i) => ({ nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
           total,
           formaPagamento: splitTxt,
+          valorRecebido: troco > 0 ? valorRecebidoNum : null,
+          troco: troco > 0 ? troco : null,
           saldoCadernetaAtualizado: saldoAtualizado,
           catalogoUrl,
         });
