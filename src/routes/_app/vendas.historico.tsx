@@ -266,8 +266,26 @@ function HistoricoVendas() {
                 <div><div className="text-xs text-muted-foreground">ID</div>#{detalhe.id.slice(0, 8)}</div>
                 <div><div className="text-xs text-muted-foreground">Data</div>{new Date(detalhe.data_venda).toLocaleString("pt-BR")}</div>
                 <div><div className="text-xs text-muted-foreground">Cliente</div>{detalhe.cliente_nome ?? "Avulsa"}</div>
-                <div><div className="text-xs text-muted-foreground">Pagamento</div>{formaPagamentoLabel[detalhe.forma_pagamento] ?? detalhe.forma_pagamento}</div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Pagamento</div>
+                  {pagamentos.length > 1
+                    ? "Pagto. misto"
+                    : formaPagamentoLabel[detalhe.forma_pagamento] ?? detalhe.forma_pagamento}
+                </div>
               </div>
+              {pagamentos.length > 0 && (
+                <div className="border-t pt-2">
+                  <div className="text-xs text-muted-foreground mb-1">Formas de pagamento</div>
+                  <div className="space-y-1">
+                    {pagamentos.map((p, idx) => (
+                      <div key={idx} className="flex justify-between text-xs">
+                        <span>{formaPagamentoLabel[p.forma_pagamento] ?? p.forma_pagamento}</span>
+                        <span className="font-medium">{brl(p.valor)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="border-t pt-2">
                 <div className="text-xs text-muted-foreground mb-1">Itens</div>
                 <div className="space-y-1 max-h-60 overflow-y-auto">
