@@ -196,7 +196,25 @@ function Dashboard() {
 
   return (
     <div>
-      <PageHeader title="Painel" description="Visão geral do mês" />
+      <PageHeader title="Painel" description="Visão geral do período" />
+
+      {/* Filtro de período */}
+      <div className="flex items-center gap-2 mb-4">
+        {([
+          { id: "hoje", label: "Hoje" },
+          { id: "semana", label: "Esta Semana" },
+          { id: "mes", label: "Este Mês" },
+        ] as const).map((p) => (
+          <Button
+            key={p.id}
+            size="sm"
+            variant={periodo === p.id ? "default" : "outline"}
+            onClick={() => setPeriodo(p.id)}
+          >
+            {p.label}
+          </Button>
+        ))}
+      </div>
 
       {/* Painel executivo escuro — KPIs */}
       <div className="exec-panel rounded-2xl p-5 md:p-6 mb-6 text-primary-foreground">
