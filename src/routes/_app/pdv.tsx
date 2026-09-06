@@ -851,18 +851,22 @@ function PDVPage() {
               )}
             </div>
 
-            {forma === "dinheiro" && splits.length === 0 && (
+            {dinheiroDevido > 0 && (
               <div>
-                <Label className="mb-2 block">Valor recebido</Label>
+                <Label className="mb-2 block">Valor recebido em dinheiro</Label>
                 <Input
                   type="text"
-                  inputMode="decimal"
-                  placeholder="0,00"
+                  inputMode="numeric"
+                  placeholder="R$ 0,00"
                   value={valorRecebido}
-                  onChange={(e) => setValorRecebido(e.target.value)}
+                  onChange={(e) => setValorRecebido(maskBRL(e.target.value))}
                 />
+                <p className="text-[11px] text-muted-foreground mt-1">Em dinheiro: {brl(dinheiroDevido)}</p>
                 {troco > 0 && (
-                  <p className="text-sm mt-1">Troco: <strong className="text-primary">{brl(troco)}</strong></p>
+                  <div className="mt-2 rounded-md bg-primary/10 border border-primary/30 p-2 text-sm">
+                    Valor Recebido: <strong>{brl(valorRecebidoNum)}</strong> | Troco:{" "}
+                    <strong className="text-primary">{brl(troco)}</strong>
+                  </div>
                 )}
               </div>
             )}
