@@ -54,17 +54,71 @@ function Dashboard() {
     setLoading(true);
     const inicio = new Date(ano, mes - 1, 1).toISOString();
     const fim = new Date(ano, mes, 1).toISOString();
+    const inicioPrev = new Date(ano, mes - 2, 1).toISOString();
 
-    const [{ data: m }, { data: vendas }, { data: prods }] = await Promise.all([
+    const [{ data: m }, { data: vendas }, { data: prods }, { data: vendasPrev }] = await Promise.all([
       supabase.from("metas").select("id,valor_meta").eq("ano", ano).eq("mes", mes).maybeSingle(),
       supabase
         .from("vendas")
-        .select("total,status")
+        .select("id,total,status")
         .gte("data_venda", inicio)
         .lt("data_venda", fim)
         .neq("status", "cancelada"),
-      supabase.from("produtos").select("id,nome,estoque,estoque_minimo").eq("ativo", true),
+      supabase.from("produtos").select("id,nome,estoque,estoque_minimo,preco,preco_custo").eq("ativo", true),
+      supabase
+        .from("vendas")
+        .select("id,total")
+        .gte("data_venda", inicioPrev)
+        .lt("data_venda", inicio)
+        .neq("status", "cancelada"),
     ]);
+
+    // ---- KPIs executivos ----
+    const listaProds = (prods as any[]) || [];
+    const custoMap = new Map<string, number>(
+      listaProds.map((p) => [p.id, Number(p.preco_custo ?? 0)])
+    );
+    const custoEstoque = listaProds.reduce((s, p) => s + Number(p.estoque) * Number(p.preco_custo ?? 0), 0);
+    const potencialVenda = listaProds.reduce((s, p) => s + Number(p.estoque) * Number(p.preco ?? 0), 0);
+    const lucroPotencial = Math.max(0, potencialVenda - custoEstoque);
+    const margem = potencialVenda > 0 ? (lucroPotencial / potencialVenda) * 100 : 0;
+    const markup = custoEstoque > 0 ? (lucroPotencial / custoEstoque) * 100 : 0;
+
+    const vendasList = (vendas as { id: string; total: number }[]) || [];
+    const prevList = (vendasPrev as { id: string; total: number }[]) || [];
+    const fatPrev = prevList.reduce((s, v) => s + Number(v.total), 0);
+    const ticketPrev = prevList.length > 0 ? fatPrev / prevList.length : 0;
+
+    const lucroDe = async (ids: string[]) => {
+      if (ids.length === 0) return 0;
+      const { data: itens } = await supabase
+        .from("itens_venda")
+        .select("produto_id,quantidade,subtotal")
+        .in("venda_id", ids);
+      return ((itens as any[]) || []).reduce(
+        (s, it) => s + Number(it.subtotal) - (custoMap.get(it.produto_id) ?? 0) * Number(it.quantidade),
+        0
+      );
+    };
+    const [lucroMes, lucroPrev] = await Promise.all([
+      lucroDe(vendasList.map((v) => v.id)),
+      lucroDe(prevList.map((v) => v.id)),
+    ]);
+
+    const fatMes = vendasList.reduce((s, v) => s + Number(v.total), 0);
+    const ticketMes = vendasList.length > 0 ? fatMes / vendasList.length : 0;
+    const margemPrev = fatPrev > 0 ? (lucroPrev / fatPrev) * 100 : 0;
+    const delta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null);
+
+    setKpis({
+      custoEstoque, potencialVenda, margem, markup,
+      faturamento: fatMes, lucro: lucroMes, ticket: ticketMes,
+      dMarkup: markup > 0 ? markup : null,
+      dMargem: margemPrev > 0 ? margem - margemPrev : null,
+      dFat: delta(fatMes, fatPrev),
+      dLucro: delta(lucroMes, lucroPrev),
+      dTicket: delta(ticketMes, ticketPrev),
+    });
 
     setMeta(Number(m?.valor_meta ?? 0));
     setMetaId(m?.id ?? null);
