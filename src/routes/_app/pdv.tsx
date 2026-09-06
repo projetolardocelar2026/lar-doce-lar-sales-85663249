@@ -319,7 +319,8 @@ function PDVPage() {
           taxa: taxaNum,
           credito_usado: creditoUsado,
           sessao_caixa_id: sessaoCaixaId,
-          observacoes: observacoes || null,
+          observacoes: [observacoes || null, troco > 0 ? `Valor Recebido: ${brl(valorRecebidoNum)} | Troco: ${brl(troco)}` : null]
+            .filter(Boolean).join(" — ") || null,
           status: statusVenda,
           data_venda: agora,
           vencimento_caderneta: vencCaderneta,
