@@ -150,7 +150,7 @@ function Dashboard() {
     setLoading(false);
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(); }, [periodo]);
 
   const percentual = meta > 0 ? Math.min(100, (faturado / meta) * 100) : 0;
   const restante = Math.max(0, meta - faturado);
