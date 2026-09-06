@@ -20,7 +20,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 
-import { brl, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
+import { brl, formaPagamentoLabel, STORE_NAME, maskBRL, parseBRL } from "@/lib/format";
 import { precoVigente } from "@/lib/preco";
 import { toast } from "sonner";
 import {
