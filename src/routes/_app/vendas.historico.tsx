@@ -37,6 +37,7 @@ type Venda = {
   cliente_telefone?: string | null;
 };
 type Item = { produto_nome: string; quantidade: number; preco_unitario: number; subtotal: number };
+type Pagamento = { forma_pagamento: string; valor: number };
 
 function HistoricoVendas() {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -47,6 +48,7 @@ function HistoricoVendas() {
   const [cancelando, setCancelando] = useState(false);
   const [detalhe, setDetalhe] = useState<Venda | null>(null);
   const [itens, setItens] = useState<Item[]>([]);
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
 
   async function carregar() {
     setLoading(true);
@@ -80,11 +82,17 @@ function HistoricoVendas() {
 
   async function abrirDetalhe(v: Venda) {
     setDetalhe(v);
-    const { data } = await supabase
-      .from("itens_venda")
-      .select("produto_nome,quantidade,preco_unitario,subtotal")
-      .eq("venda_id", v.id);
+    setPagamentos([]);
+    const [{ data }, { data: pg }] = await Promise.all([
+      supabase.from("itens_venda")
+        .select("produto_nome,quantidade,preco_unitario,subtotal")
+        .eq("venda_id", v.id),
+      supabase.from("pagamentos_venda")
+        .select("forma_pagamento,valor")
+        .eq("venda_id", v.id),
+    ]);
     setItens((data as Item[]) || []);
+    setPagamentos(((pg as any[]) || []).map((p) => ({ forma_pagamento: p.forma_pagamento, valor: Number(p.valor) })));
   }
 
   async function enviarWhatsApp(v: Venda) {
@@ -96,22 +104,30 @@ function HistoricoVendas() {
       toast.error("Cliente sem telefone cadastrado");
       return;
     }
-    const { data } = await supabase
-      .from("itens_venda")
-      .select("produto_nome,quantidade,preco_unitario")
-      .eq("venda_id", v.id);
+    const [{ data }, { data: pg }] = await Promise.all([
+      supabase.from("itens_venda")
+        .select("produto_nome,quantidade,preco_unitario")
+        .eq("venda_id", v.id),
+      supabase.from("pagamentos_venda")
+        .select("forma_pagamento,valor")
+        .eq("venda_id", v.id),
+    ]);
     const itensVenda = ((data as any[]) || []).map((i) => ({
       nome: i.produto_nome,
       quantidade: Number(i.quantidade),
       preco: Number(i.preco_unitario),
     }));
+    const splits = (pg as any[]) || [];
+    const formaTxt = splits.length > 0
+      ? splits.map((p) => `${formaPagamentoLabel[p.forma_pagamento] ?? p.forma_pagamento}: ${brl(Number(p.valor))}`).join(" | ")
+      : v.forma_pagamento;
     const texto = gerarTextoCupom({
       vendaId: v.id,
       data: new Date(v.data_venda),
       clienteNome: v.cliente_nome,
       itens: itensVenda,
       total: Number(v.total),
-      formaPagamento: v.forma_pagamento,
+      formaPagamento: formaTxt,
     });
     abrirWhatsApp(v.cliente_telefone, texto);
   }
@@ -258,8 +274,26 @@ function HistoricoVendas() {
                 <div><div className="text-xs text-muted-foreground">ID</div>#{detalhe.id.slice(0, 8)}</div>
                 <div><div className="text-xs text-muted-foreground">Data</div>{new Date(detalhe.data_venda).toLocaleString("pt-BR")}</div>
                 <div><div className="text-xs text-muted-foreground">Cliente</div>{detalhe.cliente_nome ?? "Avulsa"}</div>
-                <div><div className="text-xs text-muted-foreground">Pagamento</div>{formaPagamentoLabel[detalhe.forma_pagamento] ?? detalhe.forma_pagamento}</div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Pagamento</div>
+                  {pagamentos.length > 1
+                    ? "Pagto. misto"
+                    : formaPagamentoLabel[detalhe.forma_pagamento] ?? detalhe.forma_pagamento}
+                </div>
               </div>
+              {pagamentos.length > 0 && (
+                <div className="border-t pt-2">
+                  <div className="text-xs text-muted-foreground mb-1">Formas de pagamento</div>
+                  <div className="space-y-1">
+                    {pagamentos.map((p, idx) => (
+                      <div key={idx} className="flex justify-between text-xs">
+                        <span>{formaPagamentoLabel[p.forma_pagamento] ?? p.forma_pagamento}</span>
+                        <span className="font-medium">{brl(p.valor)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="border-t pt-2">
                 <div className="text-xs text-muted-foreground mb-1">Itens</div>
                 <div className="space-y-1 max-h-60 overflow-y-auto">

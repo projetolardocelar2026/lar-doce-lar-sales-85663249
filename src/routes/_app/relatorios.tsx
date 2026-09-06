@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
-import { brl, fmtDateOnly, formaPagamentoLabel } from "@/lib/format";
+import { brl, fmtDateOnly, formaPagamentoLabel, round2 } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -64,6 +64,7 @@ function Relatorios() {
   const [fim, setFim] = useState(() => hoje.toISOString().slice(0, 10));
 
   const [vendas, setVendas] = useState<Venda[]>([]);
+  const [pagamentos, setPagamentos] = useState<{ venda_id: string; forma_pagamento: string; valor: number }[]>([]);
   const [itens, setItens] = useState<Item[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -98,13 +99,19 @@ function Relatorios() {
 
     if (vendasArr.length > 0) {
       const ids = vendasArr.map(x => x.id);
-      const { data: it } = await supabase
-        .from("itens_venda")
-        .select("produto_id,produto_nome,quantidade,subtotal,venda_id,categoria_id")
-        .in("venda_id", ids);
+      const [{ data: it }, { data: pg }] = await Promise.all([
+        supabase.from("itens_venda")
+          .select("produto_id,produto_nome,quantidade,subtotal,venda_id,categoria_id")
+          .in("venda_id", ids),
+        supabase.from("pagamentos_venda")
+          .select("venda_id,forma_pagamento,valor")
+          .in("venda_id", ids),
+      ]);
       setItens((it as Item[]) || []);
+      setPagamentos((pg as any[])?.map(p => ({ ...p, valor: Number(p.valor) })) || []);
     } else {
       setItens([]);
+      setPagamentos([]);
     }
     setLoading(false);
   };
@@ -159,17 +166,35 @@ function Relatorios() {
       .map(([data, total]) => ({ data: data.slice(5), total }));
   }, [vendasFiltradas, itensFiltrados, categoriaFiltro]);
 
-  // Por forma de pagamento
+  // Por forma de pagamento — usa os pagamentos fracionados (pagto. misto) quando existirem
   const porPagamento = useMemo(() => {
     const map = new Map<string, number>();
+    const subtotalPorVenda = new Map<string, number>();
+    if (categoriaFiltro !== "todas") {
+      itensFiltrados.forEach(i => {
+        subtotalPorVenda.set(i.venda_id, (subtotalPorVenda.get(i.venda_id) || 0) + Number(i.subtotal));
+      });
+    }
     vendasFiltradas.forEach(v => {
-      map.set(v.forma_pagamento, (map.get(v.forma_pagamento) || 0) + Number(v.total));
+      const base = categoriaFiltro === "todas" ? Number(v.total) : (subtotalPorVenda.get(v.id) || 0);
+      if (!base) return;
+      const splits = pagamentos.filter(p => p.venda_id === v.id);
+      const somaSplits = splits.reduce((s, p) => s + Number(p.valor), 0);
+      if (splits.length > 0 && somaSplits > 0) {
+        splits.forEach(p => {
+          const parte = base * (Number(p.valor) / somaSplits);
+          map.set(p.forma_pagamento, (map.get(p.forma_pagamento) || 0) + parte);
+        });
+      } else {
+        map.set(v.forma_pagamento, (map.get(v.forma_pagamento) || 0) + base);
+      }
     });
     return Array.from(map.entries()).map(([forma, total]) => ({
       name: formaPagamentoLabel[forma] || forma,
-      value: total,
+      value: round2(total),
     }));
-  }, [vendasFiltradas]);
+  }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos]);
+
 
   // Top produtos
   const topProdutos = useMemo(() => {
