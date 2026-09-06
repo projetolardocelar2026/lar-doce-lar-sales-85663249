@@ -52,6 +52,7 @@ function Dashboard() {
     dMarkup: number | null; dMargem: number | null;
     dFat: number | null; dLucro: number | null; dTicket: number | null;
   } | null>(null);
+  const [semanaComp, setSemanaComp] = useState<{ atual: number; anterior: number; delta: number | null } | null>(null);
 
   const carregar = async () => {
     setLoading(true);
