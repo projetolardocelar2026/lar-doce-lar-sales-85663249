@@ -164,6 +164,17 @@ function Dashboard() {
       dTicket: delta(ticketMes, ticketPrev),
     });
 
+    // Comparativo semanal fixo
+    const semAtualList = (vendasSemAtual as { total: number }[]) || [];
+    const semAntList = (vendasSemAnterior as { total: number }[]) || [];
+    const fatSemAtual = semAtualList.reduce((s, v) => s + Number(v.total), 0);
+    const fatSemAnterior = semAntList.reduce((s, v) => s + Number(v.total), 0);
+    setSemanaComp({
+      atual: fatSemAtual,
+      anterior: fatSemAnterior,
+      delta: fatSemAnterior > 0 ? ((fatSemAtual - fatSemAnterior) / fatSemAnterior) * 100 : null,
+    });
+
     setMeta(Number(m?.valor_meta ?? 0));
     setMetaId(m?.id ?? null);
     setValorInput(m?.valor_meta ? String(m.valor_meta) : "");
