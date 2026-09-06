@@ -671,11 +671,11 @@ function PDVPage() {
               </div>
               <div>
                 <Label className="text-xs">Taxa/Entrega</Label>
-                <Input className="h-8 text-sm" value={taxaStr} onChange={(e) => setTaxaStr(e.target.value)} placeholder="0,00"/>
+                <Input className="h-8 text-sm" inputMode="numeric" value={taxaStr} onChange={(e) => setTaxaStr(maskBRL(e.target.value))} placeholder="R$ 0,00"/>
               </div>
               <div>
                 <Label className="text-xs">Usar crédito</Label>
-                <Input className="h-8 text-sm" value={usarCreditoStr} onChange={(e) => setUsarCreditoStr(e.target.value)} placeholder="0,00" disabled={!cliente || Number(cliente?.saldo_credito || 0) <= 0}/>
+                <Input className="h-8 text-sm" inputMode="numeric" value={usarCreditoStr} onChange={(e) => setUsarCreditoStr(maskBRL(e.target.value))} placeholder="R$ 0,00" disabled={!cliente || Number(cliente?.saldo_credito || 0) <= 0}/>
                 {cliente && Number(cliente.saldo_credito) > 0 && (
                   <p className="text-[10px] text-muted-foreground mt-0.5">Disp.: {brl(cliente.saldo_credito)}</p>
                 )}
