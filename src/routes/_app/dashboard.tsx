@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import {
   ShoppingCart, Package, Users, Notebook, Target, TrendingUp, Pencil, Trophy, AlertTriangle,
+  Boxes, Percent, CircleDollarSign, PiggyBank, Receipt, ArrowUpRight, ArrowDownRight, Minus,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/dashboard")({

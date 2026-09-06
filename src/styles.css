@@ -162,6 +162,23 @@
 @utility shadow-glow       { box-shadow: var(--shadow-glow); }
 @utility transition-smooth { transition: var(--transition-smooth); }
 
+/* Painel executivo escuro (Dashboard) */
+@utility exec-panel {
+  background: linear-gradient(155deg, var(--brand-navy-deep) 0%, oklch(0.22 0.08 262) 55%, oklch(0.3 0.12 255) 100%);
+  box-shadow: 0 20px 50px oklch(0.2 0.08 260 / 0.35), inset 0 1px 0 oklch(1 0 0 / 0.08);
+}
+@utility exec-card {
+  background: oklch(1 0 0 / 0.06);
+  border: 1px solid oklch(1 0 0 / 0.12);
+  backdrop-filter: blur(10px);
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+  &:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in oklab, var(--brand-sky) 55%, transparent);
+    background: oklch(1 0 0 / 0.09);
+  }
+}
+
 @utility finance-panel {
   background: linear-gradient(145deg, color-mix(in oklab, var(--card) 90%, var(--brand-sky) 10%), var(--card));
   border-color: color-mix(in oklab, var(--brand-sky) 28%, var(--border));
