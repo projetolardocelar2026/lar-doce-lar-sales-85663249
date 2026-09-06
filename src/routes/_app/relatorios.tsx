@@ -64,6 +64,7 @@ function Relatorios() {
   const [fim, setFim] = useState(() => hoje.toISOString().slice(0, 10));
 
   const [vendas, setVendas] = useState<Venda[]>([]);
+  const [pagamentos, setPagamentos] = useState<{ venda_id: string; forma_pagamento: string; valor: number }[]>([]);
   const [itens, setItens] = useState<Item[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
