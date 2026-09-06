@@ -353,9 +353,9 @@ function Dashboard() {
 
       {/* Alerta de estoque mínimo */}
       {estoqueBaixo.length > 0 && (
-        <Card className="mb-6 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
+        <Card className="mb-6 border-rose-500/60 bg-rose-50 dark:bg-rose-950/30 shadow-[0_0_0_1px_rgba(244,63,94,0.25)]">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
+            <CardTitle className="text-base flex items-center gap-2 text-rose-700 dark:text-rose-400">
               <AlertTriangle className="h-5 w-5" />
               {estoqueBaixo.length} produto{estoqueBaixo.length > 1 ? "s" : ""} no estoque mínimo
             </CardTitle>
