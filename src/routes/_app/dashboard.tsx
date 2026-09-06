@@ -74,7 +74,21 @@ function Dashboard() {
       inicioPrev = new Date(ano, mes - 2, 1).toISOString();
     }
 
-    const [{ data: m }, { data: vendas }, { data: prods }, { data: vendasPrev }] = await Promise.all([
+    // Janelas para comparativo semanal fixo (sempre exibido)
+    const hojeSem = new Date(hoje); hojeSem.setHours(0, 0, 0, 0);
+    const iniSemAtual = new Date(hojeSem); iniSemAtual.setDate(iniSemAtual.getDate() - ((iniSemAtual.getDay() + 6) % 7));
+    const fimSemAtual = new Date(iniSemAtual); fimSemAtual.setDate(fimSemAtual.getDate() + 7);
+    const iniSemAnt = new Date(iniSemAtual); iniSemAnt.setDate(iniSemAnt.getDate() - 7);
+    const fimSemAnt = new Date(iniSemAnt); fimSemAnt.setDate(fimSemAnt.getDate() + 7);
+
+    const [
+      { data: m },
+      { data: vendas },
+      { data: prods },
+      { data: vendasPrev },
+      { data: vendasSemAtual },
+      { data: vendasSemAnterior },
+    ] = await Promise.all([
       supabase.from("metas").select("id,valor_meta").eq("ano", ano).eq("mes", mes).maybeSingle(),
       supabase
         .from("vendas")
@@ -88,6 +102,18 @@ function Dashboard() {
         .select("id,total")
         .gte("data_venda", inicioPrev)
         .lt("data_venda", inicio)
+        .neq("status", "cancelada"),
+      supabase
+        .from("vendas")
+        .select("total")
+        .gte("data_venda", iniSemAtual.toISOString())
+        .lt("data_venda", fimSemAtual.toISOString())
+        .neq("status", "cancelada"),
+      supabase
+        .from("vendas")
+        .select("total")
+        .gte("data_venda", iniSemAnt.toISOString())
+        .lt("data_venda", fimSemAnt.toISOString())
         .neq("status", "cancelada"),
     ]);
 
