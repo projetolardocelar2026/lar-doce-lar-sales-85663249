@@ -223,7 +223,11 @@ function Dashboard() {
             Indicadores executivos
           </h2>
           <span className="text-xs text-primary-foreground/50">
-            Comparativo vs. {MESES[(mes - 2 + 12) % 12]}
+            {periodo === "hoje"
+              ? "Comparativo vs. ontem"
+              : periodo === "semana"
+                ? "Comparativo vs. semana anterior"
+                : `Comparativo vs. ${MESES[(mes - 2 + 12) % 12]}`}
           </span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
