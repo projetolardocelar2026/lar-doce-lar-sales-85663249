@@ -267,6 +267,14 @@ function PDVPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showSplit, splits.length]);
 
+  // Pagamento único em dinheiro: sugere o total como valor recebido.
+  useEffect(() => {
+    if (showCheckout && forma === "dinheiro" && splits.length === 0) {
+      setValorRecebido(maskBRL(String(Math.round(total * 100))));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCheckout, forma, splits.length]);
+
   const finalizar = async () => {
     if (cart.length === 0) return;
     if (creditoUsado > 0 && !cliente) return toast.error("Selecione cliente para usar crédito");
@@ -275,7 +283,12 @@ function PDVPage() {
     }
     const usandoSplit = splits.length > 0;
     if (usandoSplit && Math.abs(splitsTotal - total) > 0.01) {
-      return toast.error(`Pagamentos somam ${brl(splitsTotal)} mas total é ${brl(total)}`);
+      return toast.error(splitsTotal < total
+        ? `Faltam ${brl(total - splitsTotal)} para completar o total`
+        : `Pagamentos excedem o total em ${brl(splitsTotal - total)}`);
+    }
+    if (!usandoSplit && forma === "dinheiro" && valorRecebidoNum < total - 0.005) {
+      return toast.error(`Faltam ${brl(total - valorRecebidoNum)} no valor recebido`);
     }
     const formasUsadas: Forma[] = usandoSplit ? splits.map((s) => s.forma) : [forma];
     const usaCaderneta = formasUsadas.includes("caderneta");
@@ -888,29 +901,29 @@ function PDVPage() {
           <DialogFooter className="gap-2 p-4 border-t shrink-0 flex-col sm:flex-row bg-background">
             {(() => {
               const usandoSplit = splits.length > 0;
-              const somaPag = usandoSplit ? splitsTotal : total;
-              const falta = usandoSplit ? Math.max(0, total - splitsTotal) : 0;
-              const sobra = usandoSplit ? Math.max(0, splitsTotal - total) : 0;
-              const atingido = !usandoSplit || Math.abs(splitsTotal - total) < 0.01;
+              const somaPag = usandoSplit ? splitsTotal : (forma === "dinheiro" ? valorRecebidoNum : total);
+              const falta = Math.max(0, Math.round((total - somaPag) * 100) / 100);
+              const sobra = Math.max(0, Math.round((somaPag - total) * 100) / 100);
+              const atingido = usandoSplit
+                ? Math.abs(splitsTotal - total) < 0.01
+                : (forma === "dinheiro" ? valorRecebidoNum >= total - 0.005 : true);
               const podeFinalizar = atingido && cart.length > 0 && !saving;
               return (
                 <>
                   <div className="w-full text-center text-xs mb-1 sm:hidden">
-                    {usandoSplit ? (
-                      atingido
-                        ? <span className="text-success font-semibold">✓ Total atingido</span>
-                        : falta > 0
-                          ? <span className="text-destructive">Faltando {brl(falta)}</span>
-                          : <span className="text-destructive">Excede em {brl(sobra)}</span>
-                    ) : <span className="text-success font-semibold">✓ Total atingido</span>}
+                    {atingido
+                      ? <span className="text-success font-semibold">✓ Total atingido</span>
+                      : falta > 0
+                        ? <span className="text-destructive">Faltam {brl(falta)}</span>
+                        : <span className="text-destructive">Excede em {brl(sobra)}</span>}
                   </div>
                   <div className="hidden sm:block flex-1 text-xs">
-                    {usandoSplit && !atingido && (
+                    {!atingido && (
                       falta > 0
-                        ? <span className="text-destructive font-medium">Faltando {brl(falta)}</span>
+                        ? <span className="text-destructive font-medium">Faltam {brl(falta)}</span>
                         : <span className="text-destructive font-medium">Excede em {brl(sobra)}</span>
                     )}
-                    {(!usandoSplit || atingido) && <span className="text-success font-medium">✓ Total atingido</span>}
+                    {atingido && <span className="text-success font-medium">✓ Total atingido</span>}
                   </div>
                   <Button variant="outline" onClick={() => setShowCheckout(false)} disabled={saving}>
                     Cancelar
