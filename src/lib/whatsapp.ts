@@ -248,3 +248,42 @@ export function gerarTextoPedidoCatalogo(params: {
   L.push(`_${STORE_NAME}_`);
   return L.join("\n");
 }
+
+// ===== Recibo de pagamento/abatimento da caderneta =====
+export type ReciboPagamentoParte = { forma: string; valor: number };
+
+export function gerarTextoReciboPagamentoCaderneta(params: {
+  clienteNome: string;
+  data: Date;
+  partes: ReciboPagamentoParte[];
+  total: number;
+  saldoAtualizado: number;
+  catalogoUrl?: string;
+}): string {
+  const { clienteNome, data, partes, total, saldoAtualizado, catalogoUrl } = params;
+  const L: string[] = [];
+  L.push(`*${STORE_NAME}*`);
+  L.push(`🧾 *Recibo de Pagamento — Caderneta*`);
+  L.push(
+    `📅 ${data.toLocaleString("pt-BR", {
+      day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+    })}`,
+  );
+  L.push(`👤 ${clienteNome}`);
+  L.push("");
+  const formas = partes
+    .map((p) => `${formaPagamentoLabel[p.forma] ?? p.forma}: ${brl(p.valor)}`)
+    .join(" | ");
+  L.push(`*Forma de Pagamento:* ${formas}`);
+  L.push(`*Valor pago:* ${brl(total)}`);
+  L.push("");
+  L.push(`*Saldo atualizado da caderneta:* ${brl(saldoAtualizado)}`);
+  if (saldoAtualizado <= 0.009) L.push("✅ Caderneta quitada!");
+  if (catalogoUrl) {
+    L.push("");
+    L.push(`🛍️ Catálogo: ${catalogoUrl}`);
+  }
+  L.push("");
+  L.push("Obrigada pela preferência! 💙");
+  return L.join("\n");
+}

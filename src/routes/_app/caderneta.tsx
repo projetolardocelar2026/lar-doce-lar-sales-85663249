@@ -4,7 +4,7 @@ import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { brl, fmtDate, fmtDateOnly, formaPagamentoLabel } from "@/lib/format";
-import { abrirWhatsApp, gerarTextoCupom, gerarTextoComprasSelecionadas, gerarTextoExtratoAberto } from "@/lib/whatsapp";
+import { abrirWhatsApp, gerarTextoCupom, gerarTextoComprasSelecionadas, gerarTextoExtratoAberto, gerarTextoReciboPagamentoCaderneta } from "@/lib/whatsapp";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -358,16 +358,29 @@ function CadernetaPage() {
     );
     setPagOpen(false);
     await carregarClientes();
-    const novo = clientes.find((c) => c.id === selecionado.id);
-    if (novo) {
-      const { data } = await supabase
-        .from("clientes")
-        .select("id, nome, telefone, saldo_devedor, limite_caderneta")
-        .eq("id", selecionado.id)
-        .maybeSingle();
-      if (data) setSelecionado(data as Cliente);
-    }
+    const { data: atualizado } = await supabase
+      .from("clientes")
+      .select("id, nome, telefone, saldo_devedor, limite_caderneta")
+      .eq("id", selecionado.id)
+      .maybeSingle();
+    const cliAtual = (atualizado as Cliente | null) ?? selecionado;
+    if (atualizado) setSelecionado(atualizado as Cliente);
     await carregarHistorico(selecionado.id);
+
+    // Recibo pelo WhatsApp com a FORMA REAL do pagamento
+    if (cliAtual.telefone) {
+      abrirWhatsApp(
+        cliAtual.telefone,
+        gerarTextoReciboPagamentoCaderneta({
+          clienteNome: cliAtual.nome,
+          data: new Date(dataISO),
+          partes: partes.map((p) => ({ forma: p.forma, valor: p.valor })),
+          total,
+          saldoAtualizado: Number(cliAtual.saldo_devedor || 0),
+          catalogoUrl: catalogoUrl(),
+        }),
+      );
+    }
   };
 
 
