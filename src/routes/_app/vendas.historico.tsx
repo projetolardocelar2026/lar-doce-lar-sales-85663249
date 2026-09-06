@@ -37,6 +37,7 @@ type Venda = {
   cliente_telefone?: string | null;
 };
 type Item = { produto_nome: string; quantidade: number; preco_unitario: number; subtotal: number };
+type Pagamento = { forma_pagamento: string; valor: number };
 
 function HistoricoVendas() {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -47,6 +48,7 @@ function HistoricoVendas() {
   const [cancelando, setCancelando] = useState(false);
   const [detalhe, setDetalhe] = useState<Venda | null>(null);
   const [itens, setItens] = useState<Item[]>([]);
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
 
   async function carregar() {
     setLoading(true);
