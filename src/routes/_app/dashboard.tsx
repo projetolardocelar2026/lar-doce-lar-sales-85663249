@@ -55,9 +55,23 @@ function Dashboard() {
 
   const carregar = async () => {
     setLoading(true);
-    const inicio = new Date(ano, mes - 1, 1).toISOString();
-    const fim = new Date(ano, mes, 1).toISOString();
-    const inicioPrev = new Date(ano, mes - 2, 1).toISOString();
+    let inicio: string, fim: string, inicioPrev: string;
+    if (periodo === "hoje") {
+      const ini = new Date(hoje); ini.setHours(0, 0, 0, 0);
+      const fimD = new Date(ini); fimD.setDate(fimD.getDate() + 1);
+      const prevIni = new Date(ini); prevIni.setDate(prevIni.getDate() - 1);
+      inicio = ini.toISOString(); fim = fimD.toISOString(); inicioPrev = prevIni.toISOString();
+    } else if (periodo === "semana") {
+      const ini = new Date(hoje); ini.setHours(0, 0, 0, 0);
+      ini.setDate(ini.getDate() - ((ini.getDay() + 6) % 7)); // segunda-feira
+      const fimS = new Date(ini); fimS.setDate(fimS.getDate() + 7);
+      const prevIni = new Date(ini); prevIni.setDate(prevIni.getDate() - 7);
+      inicio = ini.toISOString(); fim = fimS.toISOString(); inicioPrev = prevIni.toISOString();
+    } else {
+      inicio = new Date(ano, mes - 1, 1).toISOString();
+      fim = new Date(ano, mes, 1).toISOString();
+      inicioPrev = new Date(ano, mes - 2, 1).toISOString();
+    }
 
     const [{ data: m }, { data: vendas }, { data: prods }, { data: vendasPrev }] = await Promise.all([
       supabase.from("metas").select("id,valor_meta").eq("ano", ano).eq("mes", mes).maybeSingle(),
