@@ -267,6 +267,14 @@ function PDVPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showSplit, splits.length]);
 
+  // Pagamento único em dinheiro: sugere o total como valor recebido.
+  useEffect(() => {
+    if (showCheckout && forma === "dinheiro" && splits.length === 0) {
+      setValorRecebido(maskBRL(String(Math.round(total * 100))));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCheckout, forma, splits.length]);
+
   const finalizar = async () => {
     if (cart.length === 0) return;
     if (creditoUsado > 0 && !cliente) return toast.error("Selecione cliente para usar crédito");
@@ -275,7 +283,12 @@ function PDVPage() {
     }
     const usandoSplit = splits.length > 0;
     if (usandoSplit && Math.abs(splitsTotal - total) > 0.01) {
-      return toast.error(`Pagamentos somam ${brl(splitsTotal)} mas total é ${brl(total)}`);
+      return toast.error(splitsTotal < total
+        ? `Faltam ${brl(total - splitsTotal)} para completar o total`
+        : `Pagamentos excedem o total em ${brl(splitsTotal - total)}`);
+    }
+    if (!usandoSplit && forma === "dinheiro" && valorRecebidoNum < total - 0.005) {
+      return toast.error(`Faltam ${brl(total - valorRecebidoNum)} no valor recebido`);
     }
     const formasUsadas: Forma[] = usandoSplit ? splits.map((s) => s.forma) : [forma];
     const usaCaderneta = formasUsadas.includes("caderneta");
