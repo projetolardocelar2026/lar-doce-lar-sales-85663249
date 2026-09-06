@@ -82,11 +82,17 @@ function HistoricoVendas() {
 
   async function abrirDetalhe(v: Venda) {
     setDetalhe(v);
-    const { data } = await supabase
-      .from("itens_venda")
-      .select("produto_nome,quantidade,preco_unitario,subtotal")
-      .eq("venda_id", v.id);
+    setPagamentos([]);
+    const [{ data }, { data: pg }] = await Promise.all([
+      supabase.from("itens_venda")
+        .select("produto_nome,quantidade,preco_unitario,subtotal")
+        .eq("venda_id", v.id),
+      supabase.from("pagamentos_venda")
+        .select("forma_pagamento,valor")
+        .eq("venda_id", v.id),
+    ]);
     setItens((data as Item[]) || []);
+    setPagamentos(((pg as any[]) || []).map((p) => ({ forma_pagamento: p.forma_pagamento, valor: Number(p.valor) })));
   }
 
   async function enviarWhatsApp(v: Venda) {
