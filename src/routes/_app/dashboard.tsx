@@ -74,7 +74,21 @@ function Dashboard() {
       inicioPrev = new Date(ano, mes - 2, 1).toISOString();
     }
 
-    const [{ data: m }, { data: vendas }, { data: prods }, { data: vendasPrev }] = await Promise.all([
+    // Janelas para comparativo semanal fixo (sempre exibido)
+    const hojeSem = new Date(hoje); hojeSem.setHours(0, 0, 0, 0);
+    const iniSemAtual = new Date(hojeSem); iniSemAtual.setDate(iniSemAtual.getDate() - ((iniSemAtual.getDay() + 6) % 7));
+    const fimSemAtual = new Date(iniSemAtual); fimSemAtual.setDate(fimSemAtual.getDate() + 7);
+    const iniSemAnt = new Date(iniSemAtual); iniSemAnt.setDate(iniSemAnt.getDate() - 7);
+    const fimSemAnt = new Date(iniSemAnt); fimSemAnt.setDate(fimSemAnt.getDate() + 7);
+
+    const [
+      { data: m },
+      { data: vendas },
+      { data: prods },
+      { data: vendasPrev },
+      { data: vendasSemAtual },
+      { data: vendasSemAnterior },
+    ] = await Promise.all([
       supabase.from("metas").select("id,valor_meta").eq("ano", ano).eq("mes", mes).maybeSingle(),
       supabase
         .from("vendas")
@@ -88,6 +102,18 @@ function Dashboard() {
         .select("id,total")
         .gte("data_venda", inicioPrev)
         .lt("data_venda", inicio)
+        .neq("status", "cancelada"),
+      supabase
+        .from("vendas")
+        .select("total")
+        .gte("data_venda", iniSemAtual.toISOString())
+        .lt("data_venda", fimSemAtual.toISOString())
+        .neq("status", "cancelada"),
+      supabase
+        .from("vendas")
+        .select("total")
+        .gte("data_venda", iniSemAnt.toISOString())
+        .lt("data_venda", fimSemAnt.toISOString())
         .neq("status", "cancelada"),
     ]);
 
@@ -136,6 +162,17 @@ function Dashboard() {
       dFat: delta(fatMes, fatPrev),
       dLucro: delta(lucroMes, lucroPrev),
       dTicket: delta(ticketMes, ticketPrev),
+    });
+
+    // Comparativo semanal fixo
+    const semAtualList = (vendasSemAtual as { total: number }[]) || [];
+    const semAntList = (vendasSemAnterior as { total: number }[]) || [];
+    const fatSemAtual = semAtualList.reduce((s, v) => s + Number(v.total), 0);
+    const fatSemAnterior = semAntList.reduce((s, v) => s + Number(v.total), 0);
+    setSemanaComp({
+      atual: fatSemAtual,
+      anterior: fatSemAnterior,
+      delta: fatSemAnterior > 0 ? ((fatSemAtual - fatSemAnterior) / fatSemAnterior) * 100 : null,
     });
 
     setMeta(Number(m?.valor_meta ?? 0));
@@ -280,6 +317,53 @@ function Dashboard() {
           />
         </div>
       </div>
+
+      {/* Comparativo semanal */}
+      <Card className="mb-6 border border-border/60 bg-card/80 backdrop-blur">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Comparativo Semanal
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Semana atual vs. semana anterior
+              </p>
+            </div>
+            <div className="flex items-center gap-4 md:gap-6">
+              <div className="text-center">
+                <div className="text-xs text-muted-foreground">Semana anterior</div>
+                <div className="text-lg font-bold">{loading ? "…" : brl(semanaComp?.anterior ?? 0)}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xs text-muted-foreground">Semana atual</div>
+                <div className="text-xl font-bold text-primary">{loading ? "…" : brl(semanaComp?.atual ?? 0)}</div>
+              </div>
+              <div className="text-center min-w-[90px]">
+                <div className="text-xs text-muted-foreground">Variação</div>
+                <div className="text-sm font-semibold">
+                  {loading || !semanaComp ? (
+                    <span className="text-muted-foreground">—</span>
+                  ) : semanaComp.delta === null ? (
+                    <span className="inline-flex items-center gap-1 text-muted-foreground">
+                      <Minus className="h-3.5 w-3.5" /> sem base
+                    </span>
+                  ) : (
+                    <span
+                      className={`inline-flex items-center gap-1 ${
+                        semanaComp.delta > 0 ? "text-emerald-600" : semanaComp.delta < 0 ? "text-rose-600" : "text-muted-foreground"
+                      }`}
+                    >
+                      {semanaComp.delta > 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : semanaComp.delta < 0 ? <ArrowDownRight className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
+                      {semanaComp.delta > 0 ? "+" : ""}{semanaComp.delta.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Meta do mês */}
       <Card className="mb-6 overflow-hidden">
