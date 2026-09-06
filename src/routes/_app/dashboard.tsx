@@ -364,8 +364,8 @@ function Dashboard() {
             <div className="space-y-1 max-h-60 overflow-y-auto">
               {estoqueBaixo.slice(0, 8).map((p) => (
                 <div key={p.id} className="flex items-center justify-between text-sm py-1">
-                  <span className="font-medium">{p.nome}</span>
-                  <Badge variant={p.estoque === 0 ? "destructive" : "secondary"}>
+                  <span className="font-medium text-rose-800 dark:text-rose-200">{p.nome}</span>
+                  <Badge variant="destructive">
                     {p.estoque} / mín {p.estoque_minimo ?? 0}
                   </Badge>
                 </div>
