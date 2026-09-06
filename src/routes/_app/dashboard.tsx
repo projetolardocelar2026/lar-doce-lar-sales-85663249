@@ -34,6 +34,9 @@ function Dashboard() {
   const ano = hoje.getFullYear();
   const mes = hoje.getMonth() + 1;
 
+  type Periodo = "hoje" | "semana" | "mes";
+  const [periodo, setPeriodo] = useState<Periodo>("mes");
+
   const [meta, setMeta] = useState<number>(0);
   const [metaId, setMetaId] = useState<string | null>(null);
   const [faturado, setFaturado] = useState<number>(0);
@@ -52,9 +55,23 @@ function Dashboard() {
 
   const carregar = async () => {
     setLoading(true);
-    const inicio = new Date(ano, mes - 1, 1).toISOString();
-    const fim = new Date(ano, mes, 1).toISOString();
-    const inicioPrev = new Date(ano, mes - 2, 1).toISOString();
+    let inicio: string, fim: string, inicioPrev: string;
+    if (periodo === "hoje") {
+      const ini = new Date(hoje); ini.setHours(0, 0, 0, 0);
+      const fimD = new Date(ini); fimD.setDate(fimD.getDate() + 1);
+      const prevIni = new Date(ini); prevIni.setDate(prevIni.getDate() - 1);
+      inicio = ini.toISOString(); fim = fimD.toISOString(); inicioPrev = prevIni.toISOString();
+    } else if (periodo === "semana") {
+      const ini = new Date(hoje); ini.setHours(0, 0, 0, 0);
+      ini.setDate(ini.getDate() - ((ini.getDay() + 6) % 7)); // segunda-feira
+      const fimS = new Date(ini); fimS.setDate(fimS.getDate() + 7);
+      const prevIni = new Date(ini); prevIni.setDate(prevIni.getDate() - 7);
+      inicio = ini.toISOString(); fim = fimS.toISOString(); inicioPrev = prevIni.toISOString();
+    } else {
+      inicio = new Date(ano, mes - 1, 1).toISOString();
+      fim = new Date(ano, mes, 1).toISOString();
+      inicioPrev = new Date(ano, mes - 2, 1).toISOString();
+    }
 
     const [{ data: m }, { data: vendas }, { data: prods }, { data: vendasPrev }] = await Promise.all([
       supabase.from("metas").select("id,valor_meta").eq("ano", ano).eq("mes", mes).maybeSingle(),
@@ -133,7 +150,7 @@ function Dashboard() {
     setLoading(false);
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(); }, [periodo]);
 
   const percentual = meta > 0 ? Math.min(100, (faturado / meta) * 100) : 0;
   const restante = Math.max(0, meta - faturado);
@@ -179,7 +196,25 @@ function Dashboard() {
 
   return (
     <div>
-      <PageHeader title="Painel" description="Visão geral do mês" />
+      <PageHeader title="Painel" description="Visão geral do período" />
+
+      {/* Filtro de período */}
+      <div className="flex items-center gap-2 mb-4">
+        {([
+          { id: "hoje", label: "Hoje" },
+          { id: "semana", label: "Esta Semana" },
+          { id: "mes", label: "Este Mês" },
+        ] as const).map((p) => (
+          <Button
+            key={p.id}
+            size="sm"
+            variant={periodo === p.id ? "default" : "outline"}
+            onClick={() => setPeriodo(p.id)}
+          >
+            {p.label}
+          </Button>
+        ))}
+      </div>
 
       {/* Painel executivo escuro — KPIs */}
       <div className="exec-panel rounded-2xl p-5 md:p-6 mb-6 text-primary-foreground">
@@ -188,7 +223,11 @@ function Dashboard() {
             Indicadores executivos
           </h2>
           <span className="text-xs text-primary-foreground/50">
-            Comparativo vs. {MESES[(mes - 2 + 12) % 12]}
+            {periodo === "hoje"
+              ? "Comparativo vs. ontem"
+              : periodo === "semana"
+                ? "Comparativo vs. semana anterior"
+                : `Comparativo vs. ${MESES[(mes - 2 + 12) % 12]}`}
           </span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
@@ -314,9 +353,9 @@ function Dashboard() {
 
       {/* Alerta de estoque mínimo */}
       {estoqueBaixo.length > 0 && (
-        <Card className="mb-6 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
+        <Card className="mb-6 border-rose-500/60 bg-rose-50 dark:bg-rose-950/30 shadow-[0_0_0_1px_rgba(244,63,94,0.25)]">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
+            <CardTitle className="text-base flex items-center gap-2 text-rose-700 dark:text-rose-400">
               <AlertTriangle className="h-5 w-5" />
               {estoqueBaixo.length} produto{estoqueBaixo.length > 1 ? "s" : ""} no estoque mínimo
             </CardTitle>
@@ -325,8 +364,8 @@ function Dashboard() {
             <div className="space-y-1 max-h-60 overflow-y-auto">
               {estoqueBaixo.slice(0, 8).map((p) => (
                 <div key={p.id} className="flex items-center justify-between text-sm py-1">
-                  <span className="font-medium">{p.nome}</span>
-                  <Badge variant={p.estoque === 0 ? "destructive" : "secondary"}>
+                  <span className="font-medium text-rose-800 dark:text-rose-200">{p.nome}</span>
+                  <Badge variant="destructive">
                     {p.estoque} / mín {p.estoque_minimo ?? 0}
                   </Badge>
                 </div>
