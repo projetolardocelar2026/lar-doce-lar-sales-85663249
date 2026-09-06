@@ -45,7 +45,7 @@ type Item = {
   venda_id: string;
   categoria_id: string | null;
 };
-type Cliente = { id: string; nome: string };
+type Cliente = { id: string; nome: string; saldo_devedor?: number };
 type Produto = { id: string; nome: string; estoque: number; estoque_minimo: number | null; ativo: boolean; categoria_id: string | null; preco: number; preco_custo: number | null };
 
 type Categoria = { id: string; nome: string };
@@ -66,6 +66,7 @@ function Relatorios() {
   const [vendas, setVendas] = useState<Venda[]>([]);
   const [pagamentos, setPagamentos] = useState<{ venda_id: string; forma_pagamento: string; valor: number }[]>([]);
   const [itens, setItens] = useState<Item[]>([]);
+  const [pagCaderneta, setPagCaderneta] = useState<{ forma_pagamento: string; valor: number }[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,17 +78,19 @@ function Relatorios() {
     const ini = new Date(inicio + "T00:00:00").toISOString();
     const fimISO = new Date(fim + "T23:59:59").toISOString();
 
-    const [{ data: v }, { data: c }, { data: p }, { data: cats }, { data: mov }, { data: contas }] = await Promise.all([
+    const [{ data: v }, { data: c }, { data: p }, { data: cats }, { data: mov }, { data: contas }, { data: pagCad }] = await Promise.all([
       supabase.from("vendas").select("id,total,forma_pagamento,data_venda,cliente_id,status")
         .gte("data_venda", ini).lte("data_venda", fimISO).neq("status", "cancelada")
         .order("data_venda", { ascending: false }),
-      supabase.from("clientes").select("id,nome"),
+      supabase.from("clientes").select("id,nome,saldo_devedor"),
       supabase.from("produtos").select("id,nome,estoque,estoque_minimo,ativo,categoria_id,preco"),
       supabase.from("categorias").select("id,nome").eq("ativa", true).order("ordem"),
       supabase.from("fluxo_caixa").select("tipo,valor,data_movimento")
         .gte("data_movimento", ini).lte("data_movimento", fimISO),
       supabase.from("contas_pagar").select("categoria,valor,status,data_pagamento")
         .eq("status", "paga").gte("data_pagamento", ini).lte("data_pagamento", fimISO),
+      supabase.from("pagamentos_caderneta").select("forma_pagamento,valor,data_pagamento")
+        .gte("data_pagamento", ini).lte("data_pagamento", fimISO),
     ]);
     const vendasArr = (v as Venda[]) || [];
     setVendas(vendasArr);
@@ -96,6 +99,7 @@ function Relatorios() {
     setCategorias((cats as Categoria[]) || []);
     setMovimentos((mov as Movimento[]) || []);
     setContasFinanceiras((contas as ContaFinanceira[]) || []);
+    setPagCaderneta(((pagCad as any[]) || []).map(x => ({ forma_pagamento: x.forma_pagamento, valor: Number(x.valor) })));
 
     if (vendasArr.length > 0) {
       const ids = vendasArr.map(x => x.id);
@@ -182,18 +186,31 @@ function Relatorios() {
       const somaSplits = splits.reduce((s, p) => s + Number(p.valor), 0);
       if (splits.length > 0 && somaSplits > 0) {
         splits.forEach(p => {
+          if (p.forma_pagamento === "caderneta") return; // fiado não é entrada de caixa
           const parte = base * (Number(p.valor) / somaSplits);
           map.set(p.forma_pagamento, (map.get(p.forma_pagamento) || 0) + parte);
         });
-      } else {
+      } else if (v.forma_pagamento !== "caderneta") {
         map.set(v.forma_pagamento, (map.get(v.forma_pagamento) || 0) + base);
       }
     });
+    // Recebimentos de caderneta entram pela forma REAL do pagamento
+    if (categoriaFiltro === "todas") {
+      pagCaderneta.forEach(p => {
+        if (p.forma_pagamento === "caderneta") return;
+        map.set(p.forma_pagamento, (map.get(p.forma_pagamento) || 0) + Number(p.valor));
+      });
+    }
     return Array.from(map.entries()).map(([forma, total]) => ({
       name: formaPagamentoLabel[forma] || forma,
       value: round2(total),
     }));
-  }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos]);
+  }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos, pagCaderneta]);
+
+  const totalAReceberCaderneta = useMemo(
+    () => clientes.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
+    [clientes],
+  );
 
 
   // Top produtos
@@ -488,6 +505,18 @@ function Relatorios() {
         </TabsContent>
 
         <TabsContent value="pagamentos" className="mt-4 grid md:grid-cols-2 gap-4">
+          <Card className="md:col-span-2 border-amber-500/40 bg-amber-500/5">
+            <CardContent className="p-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 text-amber-500" />
+                <div>
+                  <div className="text-sm font-medium">Total a Receber em Caderneta (Fiado)</div>
+                  <div className="text-xs text-muted-foreground">Crédito a receber — não entra no caixa do dia</div>
+                </div>
+              </div>
+              <span className="font-mono text-xl font-bold text-amber-600">{brl(totalAReceberCaderneta)}</span>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader><CardTitle className="text-base">Formas de pagamento</CardTitle></CardHeader>
             <CardContent className="h-72">
