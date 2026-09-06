@@ -43,6 +43,12 @@ function Dashboard() {
   const [showMeta, setShowMeta] = useState(false);
   const [valorInput, setValorInput] = useState("");
   const [savingMeta, setSavingMeta] = useState(false);
+  const [kpis, setKpis] = useState<{
+    custoEstoque: number; potencialVenda: number; margem: number; markup: number;
+    faturamento: number; lucro: number; ticket: number;
+    dMarkup: number | null; dMargem: number | null;
+    dFat: number | null; dLucro: number | null; dTicket: number | null;
+  } | null>(null);
 
   const carregar = async () => {
     setLoading(true);
