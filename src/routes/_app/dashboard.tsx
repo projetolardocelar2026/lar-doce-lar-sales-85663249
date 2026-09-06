@@ -401,6 +401,49 @@ function Dashboard() {
   );
 }
 
+function KpiCard({
+  icon: Icon, title, value, sub, delta, deltaLabel, loading,
+}: {
+  icon: any; title: string; value: string; sub?: string;
+  delta: number | null; deltaLabel?: string; loading?: boolean;
+}) {
+  const positivo = delta !== null && delta > 0;
+  const negativo = delta !== null && delta < 0;
+  return (
+    <div className="exec-card rounded-xl p-4 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-primary-foreground/60 leading-tight">
+          {title}
+        </span>
+        <div className="h-7 w-7 rounded-lg bg-brand-sky/20 flex items-center justify-center shrink-0">
+          <Icon className="h-3.5 w-3.5 text-brand-sky" />
+        </div>
+      </div>
+      <div className="text-xl font-bold leading-none">
+        {loading ? "…" : value}
+      </div>
+      {sub && <div className="text-[11px] text-primary-foreground/50">{sub}</div>}
+      <div className="flex items-center gap-1 text-xs font-semibold">
+        {delta === null ? (
+          <span className="inline-flex items-center gap-1 text-primary-foreground/40">
+            <Minus className="h-3 w-3" /> sem base
+          </span>
+        ) : (
+          <span
+            className={`inline-flex items-center gap-1 ${
+              positivo ? "text-emerald-400" : negativo ? "text-rose-400" : "text-primary-foreground/50"
+            }`}
+          >
+            {positivo ? <ArrowUpRight className="h-3.5 w-3.5" /> : negativo ? <ArrowDownRight className="h-3.5 w-3.5" /> : <Minus className="h-3 w-3" />}
+            {positivo ? "+" : ""}{delta.toFixed(1)}%
+          </span>
+        )}
+        {deltaLabel && <span className="text-[10px] font-normal text-primary-foreground/40">{deltaLabel}</span>}
+      </div>
+    </div>
+  );
+}
+
 function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className={`rounded-lg border p-3 ${highlight ? "border-primary/40 bg-primary/5" : "bg-muted/30"}`}>
