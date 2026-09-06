@@ -159,17 +159,35 @@ function Relatorios() {
       .map(([data, total]) => ({ data: data.slice(5), total }));
   }, [vendasFiltradas, itensFiltrados, categoriaFiltro]);
 
-  // Por forma de pagamento
+  // Por forma de pagamento — usa os pagamentos fracionados (pagto. misto) quando existirem
   const porPagamento = useMemo(() => {
     const map = new Map<string, number>();
+    const subtotalPorVenda = new Map<string, number>();
+    if (categoriaFiltro !== "todas") {
+      itensFiltrados.forEach(i => {
+        subtotalPorVenda.set(i.venda_id, (subtotalPorVenda.get(i.venda_id) || 0) + Number(i.subtotal));
+      });
+    }
     vendasFiltradas.forEach(v => {
-      map.set(v.forma_pagamento, (map.get(v.forma_pagamento) || 0) + Number(v.total));
+      const base = categoriaFiltro === "todas" ? Number(v.total) : (subtotalPorVenda.get(v.id) || 0);
+      if (!base) return;
+      const splits = pagamentos.filter(p => p.venda_id === v.id);
+      const somaSplits = splits.reduce((s, p) => s + Number(p.valor), 0);
+      if (splits.length > 0 && somaSplits > 0) {
+        splits.forEach(p => {
+          const parte = base * (Number(p.valor) / somaSplits);
+          map.set(p.forma_pagamento, (map.get(p.forma_pagamento) || 0) + parte);
+        });
+      } else {
+        map.set(v.forma_pagamento, (map.get(v.forma_pagamento) || 0) + base);
+      }
     });
     return Array.from(map.entries()).map(([forma, total]) => ({
       name: formaPagamentoLabel[forma] || forma,
-      value: total,
+      value: round2(total),
     }));
-  }, [vendasFiltradas]);
+  }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos]);
+
 
   // Top produtos
   const topProdutos = useMemo(() => {
