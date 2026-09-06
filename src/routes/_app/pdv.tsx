@@ -237,8 +237,13 @@ function PDVPage() {
   };
 
   const cliente = clientes.find((c) => c.id === clienteId);
-  const troco = forma === "dinheiro" && valorRecebido && splits.length === 0
-    ? Math.max(0, parseFloat(valorRecebido.replace(",", ".")) - total)
+  const restante = Math.max(0, Math.round((total - splitsTotal) * 100) / 100);
+  const dinheiroDevido = splits.length > 0
+    ? splits.filter((s) => s.forma === "dinheiro").reduce((a, s) => a + s.valor, 0)
+    : (forma === "dinheiro" ? total : 0);
+  const valorRecebidoNum = parseBRL(valorRecebido);
+  const troco = dinheiroDevido > 0 && valorRecebidoNum > 0
+    ? Math.max(0, Math.round((valorRecebidoNum - dinheiroDevido) * 100) / 100)
     : 0;
 
   const openCheckout = () => {
@@ -246,14 +251,21 @@ function PDVPage() {
     setShowCheckout(true);
   };
 
-  const addSplit = () => {
-    const v = parseFloat((splitValor || "0").replace(",", ".")) || 0;
+  const addSplit = (formaAlvo?: Forma, valorAlvo?: number) => {
+    const f = formaAlvo ?? splitForma;
+    const v = valorAlvo ?? parseBRL(splitValor);
     if (v <= 0) return toast.error("Informe valor");
     if (splitsTotal + v > total + 0.001) return toast.error("Excede o total");
-    setSplits((cur) => [...cur, { forma: splitForma, valor: v }]);
+    setSplits((cur) => [...cur, { forma: f, valor: v }]);
     setSplitValor("");
   };
   const removeSplit = (idx: number) => setSplits((cur) => cur.filter((_, i) => i !== idx));
+
+  // Ao abrir o painel de pagamento misto, sugere o saldo restante da compra.
+  useEffect(() => {
+    if (showSplit) setSplitValor(restante > 0 ? maskBRL(String(Math.round(restante * 100))) : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSplit, splits.length]);
 
   const finalizar = async () => {
     if (cart.length === 0) return;
