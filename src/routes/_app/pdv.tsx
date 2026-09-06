@@ -299,7 +299,7 @@ function PDVPage() {
     }
     const formasUsadas: Forma[] = usandoSplit ? splits.map((s) => s.forma) : [forma];
     const usaCaderneta = formasUsadas.includes("caderneta");
-    if (usaCaderneta && !clienteId) return toast.error("Selecione cliente para caderneta");
+    if (usaCaderneta && !clienteId) return toast.error("Selecione um cliente para vender na Caderneta");
     const valorCaderneta = usandoSplit ? splits.filter((s) => s.forma === "caderneta").reduce((a, s) => a + s.valor, 0) : (forma === "caderneta" ? total : 0);
     if (usaCaderneta && cliente && Number(cliente.limite_caderneta) > 0) {
       const novoSaldo = Number(cliente.saldo_devedor) + valorCaderneta;
