@@ -99,13 +99,19 @@ function Relatorios() {
 
     if (vendasArr.length > 0) {
       const ids = vendasArr.map(x => x.id);
-      const { data: it } = await supabase
-        .from("itens_venda")
-        .select("produto_id,produto_nome,quantidade,subtotal,venda_id,categoria_id")
-        .in("venda_id", ids);
+      const [{ data: it }, { data: pg }] = await Promise.all([
+        supabase.from("itens_venda")
+          .select("produto_id,produto_nome,quantidade,subtotal,venda_id,categoria_id")
+          .in("venda_id", ids),
+        supabase.from("pagamentos_venda")
+          .select("venda_id,forma_pagamento,valor")
+          .in("venda_id", ids),
+      ]);
       setItens((it as Item[]) || []);
+      setPagamentos((pg as any[])?.map(p => ({ ...p, valor: Number(p.valor) })) || []);
     } else {
       setItens([]);
+      setPagamentos([]);
     }
     setLoading(false);
   };
