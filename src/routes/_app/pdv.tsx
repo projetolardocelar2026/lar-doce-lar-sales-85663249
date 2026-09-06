@@ -20,7 +20,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 
-import { brl, formaPagamentoLabel, STORE_NAME } from "@/lib/format";
+import { brl, formaPagamentoLabel, STORE_NAME, maskBRL, parseBRL } from "@/lib/format";
 import { precoVigente } from "@/lib/preco";
 import { toast } from "sonner";
 import {
@@ -147,15 +147,12 @@ function PDVPage() {
     [cart],
   );
   const descontoNum = useMemo(() => {
-    const v = parseFloat((descontoStr || "0").replace(",", ".")) || 0;
+    const v = parseBRL(descontoStr);
     if (descontoPct) return Math.min(subtotal, subtotal * (v / 100));
     return Math.min(subtotal, v);
   }, [descontoStr, descontoPct, subtotal]);
-  const taxaNum = parseFloat((taxaStr || "0").replace(",", ".")) || 0;
-  const creditoUsado = useMemo(() => {
-    const v = parseFloat((usarCreditoStr || "0").replace(",", ".")) || 0;
-    return Math.max(0, v);
-  }, [usarCreditoStr]);
+  const taxaNum = parseBRL(taxaStr);
+  const creditoUsado = useMemo(() => Math.max(0, parseBRL(usarCreditoStr)), [usarCreditoStr]);
   const total = useMemo(
     () => Math.max(0, subtotal - descontoNum + taxaNum - creditoUsado),
     [subtotal, descontoNum, taxaNum, creditoUsado],
@@ -240,8 +237,13 @@ function PDVPage() {
   };
 
   const cliente = clientes.find((c) => c.id === clienteId);
-  const troco = forma === "dinheiro" && valorRecebido && splits.length === 0
-    ? Math.max(0, parseFloat(valorRecebido.replace(",", ".")) - total)
+  const restante = Math.max(0, Math.round((total - splitsTotal) * 100) / 100);
+  const dinheiroDevido = splits.length > 0
+    ? splits.filter((s) => s.forma === "dinheiro").reduce((a, s) => a + s.valor, 0)
+    : (forma === "dinheiro" ? total : 0);
+  const valorRecebidoNum = parseBRL(valorRecebido);
+  const troco = dinheiroDevido > 0 && valorRecebidoNum > 0
+    ? Math.max(0, Math.round((valorRecebidoNum - dinheiroDevido) * 100) / 100)
     : 0;
 
   const openCheckout = () => {
@@ -249,14 +251,21 @@ function PDVPage() {
     setShowCheckout(true);
   };
 
-  const addSplit = () => {
-    const v = parseFloat((splitValor || "0").replace(",", ".")) || 0;
+  const addSplit = (formaAlvo?: Forma, valorAlvo?: number) => {
+    const f = formaAlvo ?? splitForma;
+    const v = valorAlvo ?? parseBRL(splitValor);
     if (v <= 0) return toast.error("Informe valor");
     if (splitsTotal + v > total + 0.001) return toast.error("Excede o total");
-    setSplits((cur) => [...cur, { forma: splitForma, valor: v }]);
+    setSplits((cur) => [...cur, { forma: f, valor: v }]);
     setSplitValor("");
   };
   const removeSplit = (idx: number) => setSplits((cur) => cur.filter((_, i) => i !== idx));
+
+  // Ao abrir o painel de pagamento misto, sugere o saldo restante da compra.
+  useEffect(() => {
+    if (showSplit) setSplitValor(restante > 0 ? maskBRL(String(Math.round(restante * 100))) : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSplit, splits.length]);
 
   const finalizar = async () => {
     if (cart.length === 0) return;
@@ -310,7 +319,8 @@ function PDVPage() {
           taxa: taxaNum,
           credito_usado: creditoUsado,
           sessao_caixa_id: sessaoCaixaId,
-          observacoes: observacoes || null,
+          observacoes: [observacoes || null, troco > 0 ? `Valor Recebido: ${brl(valorRecebidoNum)} | Troco: ${brl(troco)}` : null]
+            .filter(Boolean).join(" — ") || null,
           status: statusVenda,
           data_venda: agora,
           vencimento_caderneta: vencCaderneta,
@@ -357,6 +367,8 @@ function PDVPage() {
           itens: cart.map((i) => ({ nome: i.nome, quantidade: i.quantidade, preco: i.preco })),
           total,
           formaPagamento: splitTxt,
+          valorRecebido: troco > 0 ? valorRecebidoNum : null,
+          troco: troco > 0 ? troco : null,
           saldoCadernetaAtualizado: saldoAtualizado,
           catalogoUrl,
         });
@@ -656,17 +668,17 @@ function PDVPage() {
               <div>
                 <Label className="text-xs">Desconto</Label>
                 <div className="flex gap-1">
-                  <Input className="h-8 text-sm" value={descontoStr} onChange={(e) => setDescontoStr(e.target.value)} placeholder="0,00"/>
-                  <Button type="button" size="sm" className="h-8 px-2" variant={descontoPct ? "default" : "outline"} onClick={() => setDescontoPct((v) => !v)}>{descontoPct ? "%" : "R$"}</Button>
+                  <Input className="h-8 text-sm" inputMode="numeric" value={descontoStr} onChange={(e) => setDescontoStr(descontoPct ? e.target.value.replace(/[^\d,.]/g, "") : maskBRL(e.target.value))} placeholder={descontoPct ? "0" : "R$ 0,00"}/>
+                  <Button type="button" size="sm" className="h-8 px-2" variant={descontoPct ? "default" : "outline"} onClick={() => { setDescontoPct((v) => !v); setDescontoStr(""); }}>{descontoPct ? "%" : "R$"}</Button>
                 </div>
               </div>
               <div>
                 <Label className="text-xs">Taxa/Entrega</Label>
-                <Input className="h-8 text-sm" value={taxaStr} onChange={(e) => setTaxaStr(e.target.value)} placeholder="0,00"/>
+                <Input className="h-8 text-sm" inputMode="numeric" value={taxaStr} onChange={(e) => setTaxaStr(maskBRL(e.target.value))} placeholder="R$ 0,00"/>
               </div>
               <div>
                 <Label className="text-xs">Usar crédito</Label>
-                <Input className="h-8 text-sm" value={usarCreditoStr} onChange={(e) => setUsarCreditoStr(e.target.value)} placeholder="0,00" disabled={!cliente || Number(cliente?.saldo_credito || 0) <= 0}/>
+                <Input className="h-8 text-sm" inputMode="numeric" value={usarCreditoStr} onChange={(e) => setUsarCreditoStr(maskBRL(e.target.value))} placeholder="R$ 0,00" disabled={!cliente || Number(cliente?.saldo_credito || 0) <= 0}/>
                 {cliente && Number(cliente.saldo_credito) > 0 && (
                   <p className="text-[10px] text-muted-foreground mt-0.5">Disp.: {brl(cliente.saldo_credito)}</p>
                 )}
@@ -709,6 +721,10 @@ function PDVPage() {
               )}
               {showSplit && (
                 <div className="mt-2 p-2 border rounded space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Saldo restante</span>
+                    <strong className={restante > 0 ? "text-primary" : "text-emerald-600"}>{brl(restante)}</strong>
+                  </div>
                   <div className="flex gap-2">
                     <Select value={splitForma} onValueChange={(v) => setSplitForma(v as Forma)}>
                       <SelectTrigger className="flex-1 h-8 text-sm"><SelectValue/></SelectTrigger>
@@ -716,9 +732,31 @@ function PDVPage() {
                         {FORMAS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Input className="w-24 h-8 text-sm" placeholder="Valor" value={splitValor} onChange={(e) => setSplitValor(e.target.value)}/>
-                    <Button type="button" size="sm" className="h-8" onClick={addSplit}><Plus className="h-4 w-4"/></Button>
+                    <Input
+                      className="w-28 h-8 text-sm"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
+                      value={splitValor}
+                      onChange={(e) => setSplitValor(maskBRL(e.target.value))}
+                    />
+                    <Button type="button" size="sm" className="h-8" onClick={() => addSplit()}><Plus className="h-4 w-4"/></Button>
                   </div>
+                  {restante > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1">
+                      {FORMAS.map((f) => (
+                        <Button
+                          key={f.value}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-[11px] justify-start"
+                          onClick={() => addSplit(f.value, restante)}
+                        >
+                          Restante em {f.label}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -816,18 +854,22 @@ function PDVPage() {
               )}
             </div>
 
-            {forma === "dinheiro" && splits.length === 0 && (
+            {dinheiroDevido > 0 && (
               <div>
-                <Label className="mb-2 block">Valor recebido</Label>
+                <Label className="mb-2 block">Valor recebido em dinheiro</Label>
                 <Input
                   type="text"
-                  inputMode="decimal"
-                  placeholder="0,00"
+                  inputMode="numeric"
+                  placeholder="R$ 0,00"
                   value={valorRecebido}
-                  onChange={(e) => setValorRecebido(e.target.value)}
+                  onChange={(e) => setValorRecebido(maskBRL(e.target.value))}
                 />
+                <p className="text-[11px] text-muted-foreground mt-1">Em dinheiro: {brl(dinheiroDevido)}</p>
                 {troco > 0 && (
-                  <p className="text-sm mt-1">Troco: <strong className="text-primary">{brl(troco)}</strong></p>
+                  <div className="mt-2 rounded-md bg-primary/10 border border-primary/30 p-2 text-sm">
+                    Valor Recebido: <strong>{brl(valorRecebidoNum)}</strong> | Troco:{" "}
+                    <strong className="text-primary">{brl(troco)}</strong>
+                  </div>
                 )}
               </div>
             )}
