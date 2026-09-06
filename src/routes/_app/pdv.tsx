@@ -665,8 +665,8 @@ function PDVPage() {
               <div>
                 <Label className="text-xs">Desconto</Label>
                 <div className="flex gap-1">
-                  <Input className="h-8 text-sm" value={descontoStr} onChange={(e) => setDescontoStr(e.target.value)} placeholder="0,00"/>
-                  <Button type="button" size="sm" className="h-8 px-2" variant={descontoPct ? "default" : "outline"} onClick={() => setDescontoPct((v) => !v)}>{descontoPct ? "%" : "R$"}</Button>
+                  <Input className="h-8 text-sm" inputMode="numeric" value={descontoStr} onChange={(e) => setDescontoStr(descontoPct ? e.target.value.replace(/[^\d,.]/g, "") : maskBRL(e.target.value))} placeholder={descontoPct ? "0" : "R$ 0,00"}/>
+                  <Button type="button" size="sm" className="h-8 px-2" variant={descontoPct ? "default" : "outline"} onClick={() => { setDescontoPct((v) => !v); setDescontoStr(""); }}>{descontoPct ? "%" : "R$"}</Button>
                 </div>
               </div>
               <div>
