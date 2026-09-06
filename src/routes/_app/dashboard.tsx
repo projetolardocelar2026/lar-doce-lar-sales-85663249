@@ -34,6 +34,9 @@ function Dashboard() {
   const ano = hoje.getFullYear();
   const mes = hoje.getMonth() + 1;
 
+  type Periodo = "hoje" | "semana" | "mes";
+  const [periodo, setPeriodo] = useState<Periodo>("mes");
+
   const [meta, setMeta] = useState<number>(0);
   const [metaId, setMetaId] = useState<string | null>(null);
   const [faturado, setFaturado] = useState<number>(0);
