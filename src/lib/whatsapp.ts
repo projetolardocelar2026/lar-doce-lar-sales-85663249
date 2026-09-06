@@ -10,6 +10,8 @@ export type CupomVenda = {
   itens: CupomItem[];
   total: number;
   formaPagamento: string;
+  valorRecebido?: number | null;
+  troco?: number | null;
   saldoCadernetaAtualizado?: number | null;
   catalogoUrl?: string;
 };
