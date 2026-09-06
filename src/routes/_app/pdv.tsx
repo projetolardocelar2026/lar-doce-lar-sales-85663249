@@ -718,6 +718,10 @@ function PDVPage() {
               )}
               {showSplit && (
                 <div className="mt-2 p-2 border rounded space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Saldo restante</span>
+                    <strong className={restante > 0 ? "text-primary" : "text-emerald-600"}>{brl(restante)}</strong>
+                  </div>
                   <div className="flex gap-2">
                     <Select value={splitForma} onValueChange={(v) => setSplitForma(v as Forma)}>
                       <SelectTrigger className="flex-1 h-8 text-sm"><SelectValue/></SelectTrigger>
@@ -725,9 +729,31 @@ function PDVPage() {
                         {FORMAS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Input className="w-24 h-8 text-sm" placeholder="Valor" value={splitValor} onChange={(e) => setSplitValor(e.target.value)}/>
-                    <Button type="button" size="sm" className="h-8" onClick={addSplit}><Plus className="h-4 w-4"/></Button>
+                    <Input
+                      className="w-28 h-8 text-sm"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
+                      value={splitValor}
+                      onChange={(e) => setSplitValor(maskBRL(e.target.value))}
+                    />
+                    <Button type="button" size="sm" className="h-8" onClick={() => addSplit()}><Plus className="h-4 w-4"/></Button>
                   </div>
+                  {restante > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1">
+                      {FORMAS.map((f) => (
+                        <Button
+                          key={f.value}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-[11px] justify-start"
+                          onClick={() => addSplit(f.value, restante)}
+                        >
+                          Restante em {f.label}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
