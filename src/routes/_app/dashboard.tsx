@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import {
   ShoppingCart, Package, Users, Notebook, Target, TrendingUp, Pencil, Trophy, AlertTriangle,
+  Boxes, Percent, CircleDollarSign, PiggyBank, Receipt, ArrowUpRight, ArrowDownRight, Minus,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/dashboard")({
@@ -42,22 +43,82 @@ function Dashboard() {
   const [showMeta, setShowMeta] = useState(false);
   const [valorInput, setValorInput] = useState("");
   const [savingMeta, setSavingMeta] = useState(false);
+  const [kpis, setKpis] = useState<{
+    custoEstoque: number; potencialVenda: number; margem: number; markup: number;
+    faturamento: number; lucro: number; ticket: number;
+    dMarkup: number | null; dMargem: number | null;
+    dFat: number | null; dLucro: number | null; dTicket: number | null;
+  } | null>(null);
 
   const carregar = async () => {
     setLoading(true);
     const inicio = new Date(ano, mes - 1, 1).toISOString();
     const fim = new Date(ano, mes, 1).toISOString();
+    const inicioPrev = new Date(ano, mes - 2, 1).toISOString();
 
-    const [{ data: m }, { data: vendas }, { data: prods }] = await Promise.all([
+    const [{ data: m }, { data: vendas }, { data: prods }, { data: vendasPrev }] = await Promise.all([
       supabase.from("metas").select("id,valor_meta").eq("ano", ano).eq("mes", mes).maybeSingle(),
       supabase
         .from("vendas")
-        .select("total,status")
+        .select("id,total,status")
         .gte("data_venda", inicio)
         .lt("data_venda", fim)
         .neq("status", "cancelada"),
-      supabase.from("produtos").select("id,nome,estoque,estoque_minimo").eq("ativo", true),
+      supabase.from("produtos").select("id,nome,estoque,estoque_minimo,preco,preco_custo").eq("ativo", true),
+      supabase
+        .from("vendas")
+        .select("id,total")
+        .gte("data_venda", inicioPrev)
+        .lt("data_venda", inicio)
+        .neq("status", "cancelada"),
     ]);
+
+    // ---- KPIs executivos ----
+    const listaProds = (prods as any[]) || [];
+    const custoMap = new Map<string, number>(
+      listaProds.map((p) => [p.id, Number(p.preco_custo ?? 0)])
+    );
+    const custoEstoque = listaProds.reduce((s, p) => s + Number(p.estoque) * Number(p.preco_custo ?? 0), 0);
+    const potencialVenda = listaProds.reduce((s, p) => s + Number(p.estoque) * Number(p.preco ?? 0), 0);
+    const lucroPotencial = Math.max(0, potencialVenda - custoEstoque);
+    const margem = potencialVenda > 0 ? (lucroPotencial / potencialVenda) * 100 : 0;
+    const markup = custoEstoque > 0 ? (lucroPotencial / custoEstoque) * 100 : 0;
+
+    const vendasList = (vendas as { id: string; total: number }[]) || [];
+    const prevList = (vendasPrev as { id: string; total: number }[]) || [];
+    const fatPrev = prevList.reduce((s, v) => s + Number(v.total), 0);
+    const ticketPrev = prevList.length > 0 ? fatPrev / prevList.length : 0;
+
+    const lucroDe = async (ids: string[]) => {
+      if (ids.length === 0) return 0;
+      const { data: itens } = await supabase
+        .from("itens_venda")
+        .select("produto_id,quantidade,subtotal")
+        .in("venda_id", ids);
+      return ((itens as any[]) || []).reduce(
+        (s, it) => s + Number(it.subtotal) - (custoMap.get(it.produto_id) ?? 0) * Number(it.quantidade),
+        0
+      );
+    };
+    const [lucroMes, lucroPrev] = await Promise.all([
+      lucroDe(vendasList.map((v) => v.id)),
+      lucroDe(prevList.map((v) => v.id)),
+    ]);
+
+    const fatMes = vendasList.reduce((s, v) => s + Number(v.total), 0);
+    const ticketMes = vendasList.length > 0 ? fatMes / vendasList.length : 0;
+    const margemPrev = fatPrev > 0 ? (lucroPrev / fatPrev) * 100 : 0;
+    const delta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null);
+
+    setKpis({
+      custoEstoque, potencialVenda, margem, markup,
+      faturamento: fatMes, lucro: lucroMes, ticket: ticketMes,
+      dMarkup: markup > 0 ? markup : null,
+      dMargem: margemPrev > 0 ? margem - margemPrev : null,
+      dFat: delta(fatMes, fatPrev),
+      dLucro: delta(lucroMes, lucroPrev),
+      dTicket: delta(ticketMes, ticketPrev),
+    });
 
     setMeta(Number(m?.valor_meta ?? 0));
     setMetaId(m?.id ?? null);
@@ -119,6 +180,66 @@ function Dashboard() {
   return (
     <div>
       <PageHeader title="Painel" description="Visão geral do mês" />
+
+      {/* Painel executivo escuro — KPIs */}
+      <div className="exec-panel rounded-2xl p-5 md:p-6 mb-6 text-primary-foreground">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold tracking-wide uppercase text-primary-foreground/70">
+            Indicadores executivos
+          </h2>
+          <span className="text-xs text-primary-foreground/50">
+            Comparativo vs. {MESES[(mes - 2 + 12) % 12]}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+          <KpiCard
+            icon={Boxes}
+            title="Custo Total em Estoque"
+            value={brl(kpis?.custoEstoque ?? 0)}
+            delta={kpis?.dMarkup ?? null}
+            deltaLabel="markup potencial"
+            loading={loading}
+          />
+          <KpiCard
+            icon={TrendingUp}
+            title="Potencial de Venda"
+            value={brl(kpis?.potencialVenda ?? 0)}
+            delta={kpis && kpis.custoEstoque > 0 ? kpis.margem : null}
+            deltaLabel="margem potencial"
+            loading={loading}
+          />
+          <KpiCard
+            icon={Percent}
+            title="Margem / Markup Média"
+            value={`${(kpis?.margem ?? 0).toFixed(1)}%`}
+            sub={`Markup ${(kpis?.markup ?? 0).toFixed(1)}%`}
+            delta={kpis?.dMargem ?? null}
+            deltaLabel="vs. margem realizada"
+            loading={loading}
+          />
+          <KpiCard
+            icon={CircleDollarSign}
+            title="Faturamento do Mês"
+            value={brl(kpis?.faturamento ?? 0)}
+            delta={kpis?.dFat ?? null}
+            loading={loading}
+          />
+          <KpiCard
+            icon={PiggyBank}
+            title="Lucro Bruto"
+            value={brl(kpis?.lucro ?? 0)}
+            delta={kpis?.dLucro ?? null}
+            loading={loading}
+          />
+          <KpiCard
+            icon={Receipt}
+            title="Ticket Médio"
+            value={brl(kpis?.ticket ?? 0)}
+            delta={kpis?.dTicket ?? null}
+            loading={loading}
+          />
+        </div>
+      </div>
 
       {/* Meta do mês */}
       <Card className="mb-6 overflow-hidden">
@@ -276,6 +397,49 @@ function Dashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function KpiCard({
+  icon: Icon, title, value, sub, delta, deltaLabel, loading,
+}: {
+  icon: any; title: string; value: string; sub?: string;
+  delta: number | null; deltaLabel?: string; loading?: boolean;
+}) {
+  const positivo = delta !== null && delta > 0;
+  const negativo = delta !== null && delta < 0;
+  return (
+    <div className="exec-card rounded-xl p-4 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-primary-foreground/60 leading-tight">
+          {title}
+        </span>
+        <div className="h-7 w-7 rounded-lg bg-brand-sky/20 flex items-center justify-center shrink-0">
+          <Icon className="h-3.5 w-3.5 text-brand-sky" />
+        </div>
+      </div>
+      <div className="text-xl font-bold leading-none">
+        {loading ? "…" : value}
+      </div>
+      {sub && <div className="text-[11px] text-primary-foreground/50">{sub}</div>}
+      <div className="flex items-center gap-1 text-xs font-semibold">
+        {delta === null ? (
+          <span className="inline-flex items-center gap-1 text-primary-foreground/40">
+            <Minus className="h-3 w-3" /> sem base
+          </span>
+        ) : (
+          <span
+            className={`inline-flex items-center gap-1 ${
+              positivo ? "text-emerald-400" : negativo ? "text-rose-400" : "text-primary-foreground/50"
+            }`}
+          >
+            {positivo ? <ArrowUpRight className="h-3.5 w-3.5" /> : negativo ? <ArrowDownRight className="h-3.5 w-3.5" /> : <Minus className="h-3 w-3" />}
+            {positivo ? "+" : ""}{delta.toFixed(1)}%
+          </span>
+        )}
+        {deltaLabel && <span className="text-[10px] font-normal text-primary-foreground/40">{deltaLabel}</span>}
+      </div>
     </div>
   );
 }
