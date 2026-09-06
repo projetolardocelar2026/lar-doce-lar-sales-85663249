@@ -104,22 +104,30 @@ function HistoricoVendas() {
       toast.error("Cliente sem telefone cadastrado");
       return;
     }
-    const { data } = await supabase
-      .from("itens_venda")
-      .select("produto_nome,quantidade,preco_unitario")
-      .eq("venda_id", v.id);
+    const [{ data }, { data: pg }] = await Promise.all([
+      supabase.from("itens_venda")
+        .select("produto_nome,quantidade,preco_unitario")
+        .eq("venda_id", v.id),
+      supabase.from("pagamentos_venda")
+        .select("forma_pagamento,valor")
+        .eq("venda_id", v.id),
+    ]);
     const itensVenda = ((data as any[]) || []).map((i) => ({
       nome: i.produto_nome,
       quantidade: Number(i.quantidade),
       preco: Number(i.preco_unitario),
     }));
+    const splits = (pg as any[]) || [];
+    const formaTxt = splits.length > 0
+      ? splits.map((p) => `${formaPagamentoLabel[p.forma_pagamento] ?? p.forma_pagamento}: ${brl(Number(p.valor))}`).join(" | ")
+      : v.forma_pagamento;
     const texto = gerarTextoCupom({
       vendaId: v.id,
       data: new Date(v.data_venda),
       clienteNome: v.cliente_nome,
       itens: itensVenda,
       total: Number(v.total),
-      formaPagamento: v.forma_pagamento,
+      formaPagamento: formaTxt,
     });
     abrirWhatsApp(v.cliente_telefone, texto);
   }
