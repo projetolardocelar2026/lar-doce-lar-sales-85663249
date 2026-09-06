@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
-import { brl, fmtDateOnly, formaPagamentoLabel } from "@/lib/format";
+import { brl, fmtDateOnly, formaPagamentoLabel, round2 } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
