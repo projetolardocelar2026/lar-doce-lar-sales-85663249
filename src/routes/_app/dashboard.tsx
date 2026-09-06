@@ -181,6 +181,66 @@ function Dashboard() {
     <div>
       <PageHeader title="Painel" description="Visão geral do mês" />
 
+      {/* Painel executivo escuro — KPIs */}
+      <div className="exec-panel rounded-2xl p-5 md:p-6 mb-6 text-primary-foreground">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold tracking-wide uppercase text-primary-foreground/70">
+            Indicadores executivos
+          </h2>
+          <span className="text-xs text-primary-foreground/50">
+            Comparativo vs. {MESES[(mes - 2 + 12) % 12]}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+          <KpiCard
+            icon={Boxes}
+            title="Custo Total em Estoque"
+            value={brl(kpis?.custoEstoque ?? 0)}
+            delta={kpis?.dMarkup ?? null}
+            deltaLabel="markup potencial"
+            loading={loading}
+          />
+          <KpiCard
+            icon={TrendingUp}
+            title="Potencial de Venda"
+            value={brl(kpis?.potencialVenda ?? 0)}
+            delta={kpis && kpis.custoEstoque > 0 ? kpis.margem : null}
+            deltaLabel="margem potencial"
+            loading={loading}
+          />
+          <KpiCard
+            icon={Percent}
+            title="Margem / Markup Média"
+            value={`${(kpis?.margem ?? 0).toFixed(1)}%`}
+            sub={`Markup ${(kpis?.markup ?? 0).toFixed(1)}%`}
+            delta={kpis?.dMargem ?? null}
+            deltaLabel="vs. margem realizada"
+            loading={loading}
+          />
+          <KpiCard
+            icon={CircleDollarSign}
+            title="Faturamento do Mês"
+            value={brl(kpis?.faturamento ?? 0)}
+            delta={kpis?.dFat ?? null}
+            loading={loading}
+          />
+          <KpiCard
+            icon={PiggyBank}
+            title="Lucro Bruto"
+            value={brl(kpis?.lucro ?? 0)}
+            delta={kpis?.dLucro ?? null}
+            loading={loading}
+          />
+          <KpiCard
+            icon={Receipt}
+            title="Ticket Médio"
+            value={brl(kpis?.ticket ?? 0)}
+            delta={kpis?.dTicket ?? null}
+            loading={loading}
+          />
+        </div>
+      </div>
+
       {/* Meta do mês */}
       <Card className="mb-6 overflow-hidden">
         <CardHeader className="pb-3">
