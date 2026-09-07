@@ -41,6 +41,12 @@ export function gerarTextoCupom(v: CupomVenda): string {
   if (v.formaPagamento === "caderneta" && v.saldoCadernetaAtualizado != null) {
     linhas.push(`*Saldo atualizado da caderneta:* ${brl(v.saldoCadernetaAtualizado)}`);
   }
+  if (v.vencimentoCaderneta) {
+    linhas.push(
+      `📆 *Vencimento previsto:* ${new Date(v.vencimentoCaderneta + "T12:00:00").toLocaleDateString("pt-BR")}`,
+    );
+  }
+
   if (v.catalogoUrl) {
     linhas.push("");
     linhas.push(`🛍️ Catálogo: ${v.catalogoUrl}`);

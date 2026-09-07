@@ -880,6 +880,19 @@ function PDVPage() {
                       Limite excedido em {brl(Number(cliente.saldo_devedor) + total - Number(cliente.limite_caderneta))}
                     </div>
                   )}
+                  {(forma === "caderneta" || splits.some((s) => s.forma === "caderneta")) && (
+                    <div className="border-t pt-2">
+                      <Label className="mb-1 block text-xs text-muted-foreground">
+                        Vencimento / previsão de pagamento
+                      </Label>
+                      <Input
+                        type="date"
+                        value={vencimentoCad}
+                        onChange={(e) => setVencimentoCad(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
