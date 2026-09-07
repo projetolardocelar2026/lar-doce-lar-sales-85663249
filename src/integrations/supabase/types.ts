@@ -848,6 +848,9 @@ export type Database = {
           forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
           id: string
           observacoes: string | null
+          quitacao_formas: Json | null
+          quitacao_valor: number | null
+          quitada_em: string | null
           sessao_caixa_id: string | null
           status: Database["public"]["Enums"]["status_venda"]
           taxa: number
@@ -865,6 +868,9 @@ export type Database = {
           forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
           observacoes?: string | null
+          quitacao_formas?: Json | null
+          quitacao_valor?: number | null
+          quitada_em?: string | null
           sessao_caixa_id?: string | null
           status?: Database["public"]["Enums"]["status_venda"]
           taxa?: number
@@ -882,6 +888,9 @@ export type Database = {
           forma_pagamento?: Database["public"]["Enums"]["forma_pagamento"]
           id?: string
           observacoes?: string | null
+          quitacao_formas?: Json | null
+          quitacao_valor?: number | null
+          quitada_em?: string | null
           sessao_caixa_id?: string | null
           status?: Database["public"]["Enums"]["status_venda"]
           taxa?: number
