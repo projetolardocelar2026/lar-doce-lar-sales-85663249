@@ -939,6 +939,7 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      quitar_compras_caderneta: { Args: { _ids: string[] }; Returns: number }
       registrar_caixa_movimento: {
         Args: {
           _motivo: string
