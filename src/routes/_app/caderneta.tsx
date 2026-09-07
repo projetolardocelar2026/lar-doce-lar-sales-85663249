@@ -842,7 +842,12 @@ function CadernetaPage() {
                                     aria-label="Selecionar compra para envio"
                                   />
                                 )}
-                                <Badge variant={statusVar}>{statusLabel}</Badge>
+                                <Badge
+                                  variant={statusVar}
+                                  className={paga ? "bg-emerald-600 text-white hover:bg-emerald-600" : undefined}
+                                >
+                                  {statusLabel}
+                                </Badge>
                                 <span className="text-sm font-medium">{fmtDate(v.data_venda)}</span>
                                 <span className="text-xs text-muted-foreground">
                                   Vencimento:{" "}
