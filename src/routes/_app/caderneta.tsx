@@ -4,7 +4,7 @@ import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { brl, fmtDate, fmtDateOnly, formaPagamentoLabel } from "@/lib/format";
-import { abrirWhatsApp, gerarTextoCupom, gerarTextoComprasSelecionadas, gerarTextoExtratoAberto, gerarTextoReciboPagamentoCaderneta } from "@/lib/whatsapp";
+import { abrirWhatsApp, gerarTextoCupom, gerarTextoComprasSelecionadas, gerarTextoExtratoAberto, gerarTextoReciboPagamentoCaderneta, gerarTextoComprovanteQuitacao } from "@/lib/whatsapp";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -135,6 +135,7 @@ function CadernetaPage() {
 
   // Seleção manual de compras para envio no WhatsApp
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
+  const [mostrarPagas, setMostrarPagas] = useState(false);
 
   // Dialog: cupom individual
   const [cupomVenda, setCupomVenda] = useState<Venda | null>(null);
@@ -356,6 +357,16 @@ function CadernetaPage() {
         ? `Pagamento misto de ${brl(total)} registrado em ${partes.length} formas`
         : "Pagamento registrado e lançado no fluxo de caixa",
     );
+    // Baixa individual das compras selecionadas
+    const quitadas = vendasEmAberto.filter((v) => selecionadas.includes(v.id));
+    if (quitadas.length > 0) {
+      const { error: errBaixa } = await supabase
+        .from("vendas")
+        .update({ cobranca_status: "paga", status: "paga" })
+        .in("id", quitadas.map((v) => v.id));
+      if (errBaixa) toast.error("Erro ao baixar compras: " + errBaixa.message);
+    }
+
     setPagOpen(false);
     await carregarClientes();
     const { data: atualizado } = await supabase
@@ -366,19 +377,23 @@ function CadernetaPage() {
     const cliAtual = (atualizado as Cliente | null) ?? selecionado;
     if (atualizado) setSelecionado(atualizado as Cliente);
     await carregarHistorico(selecionado.id);
+    setSelecionadas([]);
 
-    // Recibo pelo WhatsApp com a FORMA REAL do pagamento
+    // Recibo/comprovante pelo WhatsApp com a FORMA REAL do pagamento
     if (cliAtual.telefone) {
+      const comum = {
+        clienteNome: cliAtual.nome,
+        data: new Date(dataISO),
+        partes: partes.map((p) => ({ forma: p.forma, valor: p.valor })),
+        total,
+        saldoAtualizado: Number(cliAtual.saldo_devedor || 0),
+        catalogoUrl: catalogoUrl(),
+      };
       abrirWhatsApp(
         cliAtual.telefone,
-        gerarTextoReciboPagamentoCaderneta({
-          clienteNome: cliAtual.nome,
-          data: new Date(dataISO),
-          partes: partes.map((p) => ({ forma: p.forma, valor: p.valor })),
-          total,
-          saldoAtualizado: Number(cliAtual.saldo_devedor || 0),
-          catalogoUrl: catalogoUrl(),
-        }),
+        quitadas.length > 0
+          ? gerarTextoComprovanteQuitacao({ ...comum, compras: quitadas.map(compraParaTexto) })
+          : gerarTextoReciboPagamentoCaderneta(comum),
       );
     }
   };
@@ -795,7 +810,14 @@ function CadernetaPage() {
                             </Button>
                           </div>
                         )}
-                        {vendas.map((v) => {
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Checkbox
+                            checked={mostrarPagas}
+                            onCheckedChange={(c) => setMostrarPagas(!!c)}
+                          />
+                          Mostrar compras já pagas
+                        </label>
+                        {(mostrarPagas ? vendas : vendasEmAberto).map((v) => {
                           const atraso = diasAtraso(v.vencimento_caderneta);
                           const paga = v.status === "paga" || v.cobranca_status === "paga";
                           const statusLabel = paga ? "Paga" : atraso > 0 ? "Vencida" : "Aberta";
@@ -820,7 +842,12 @@ function CadernetaPage() {
                                     aria-label="Selecionar compra para envio"
                                   />
                                 )}
-                                <Badge variant={statusVar}>{statusLabel}</Badge>
+                                <Badge
+                                  variant={statusVar}
+                                  className={paga ? "bg-emerald-600 text-white hover:bg-emerald-600" : undefined}
+                                >
+                                  {statusLabel}
+                                </Badge>
                                 <span className="text-sm font-medium">{fmtDate(v.data_venda)}</span>
                                 <span className="text-xs text-muted-foreground">
                                   Vencimento:{" "}
