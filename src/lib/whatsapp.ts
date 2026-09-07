@@ -13,6 +13,7 @@ export type CupomVenda = {
   valorRecebido?: number | null;
   troco?: number | null;
   saldoCadernetaAtualizado?: number | null;
+  vencimentoCaderneta?: string | null;
   catalogoUrl?: string;
 };
 

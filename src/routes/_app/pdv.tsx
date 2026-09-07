@@ -393,6 +393,7 @@ function PDVPage() {
           valorRecebido: troco > 0 ? valorRecebidoNum : null,
           troco: troco > 0 ? troco : null,
           saldoCadernetaAtualizado: saldoAtualizado,
+          vencimentoCaderneta: usaCaderneta ? vencCaderneta : null,
           catalogoUrl,
         });
         setCupomVenda({
