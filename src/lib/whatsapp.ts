@@ -281,7 +281,7 @@ export function gerarTextoReciboPagamentoCaderneta(params: {
   const formas = partes
     .map((p) => `${formaPagamentoLabel[p.forma] ?? p.forma}: ${brl(p.valor)}`)
     .join(" | ");
-  L.push(`*Forma de Pagamento:* ${formas}`);
+  if (formas) L.push(`*Forma de Pagamento:* ${formas}`);
   L.push(`*Valor pago:* ${brl(total)}`);
   L.push("");
   L.push(`*Saldo atualizado da caderneta:* ${brl(saldoAtualizado)}`);
