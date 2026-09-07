@@ -102,6 +102,9 @@ function PDVPage() {
   const [showSplit, setShowSplit] = useState(false);
   const [splitForma, setSplitForma] = useState<Forma>("dinheiro");
   const [splitValor, setSplitValor] = useState("");
+  const [vencimentoCad, setVencimentoCad] = useState<string>(() =>
+    new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  );
   const [cupomVenda, setCupomVenda] = useState<null | {
     cliente: Cliente;
     vendaId: string;
@@ -325,7 +328,7 @@ function PDVPage() {
       }
 
       const vencCaderneta = usaCaderneta
-        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        ? (vencimentoCad || new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
         : null;
 
       const { data: venda, error: vErr } = await supabase
