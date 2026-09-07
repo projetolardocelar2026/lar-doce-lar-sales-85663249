@@ -376,19 +376,23 @@ function CadernetaPage() {
     const cliAtual = (atualizado as Cliente | null) ?? selecionado;
     if (atualizado) setSelecionado(atualizado as Cliente);
     await carregarHistorico(selecionado.id);
+    setSelecionadas([]);
 
-    // Recibo pelo WhatsApp com a FORMA REAL do pagamento
+    // Recibo/comprovante pelo WhatsApp com a FORMA REAL do pagamento
     if (cliAtual.telefone) {
+      const comum = {
+        clienteNome: cliAtual.nome,
+        data: new Date(dataISO),
+        partes: partes.map((p) => ({ forma: p.forma, valor: p.valor })),
+        total,
+        saldoAtualizado: Number(cliAtual.saldo_devedor || 0),
+        catalogoUrl: catalogoUrl(),
+      };
       abrirWhatsApp(
         cliAtual.telefone,
-        gerarTextoReciboPagamentoCaderneta({
-          clienteNome: cliAtual.nome,
-          data: new Date(dataISO),
-          partes: partes.map((p) => ({ forma: p.forma, valor: p.valor })),
-          total,
-          saldoAtualizado: Number(cliAtual.saldo_devedor || 0),
-          catalogoUrl: catalogoUrl(),
-        }),
+        quitadas.length > 0
+          ? gerarTextoComprovanteQuitacao({ ...comum, compras: quitadas.map(compraParaTexto) })
+          : gerarTextoReciboPagamentoCaderneta(comum),
       );
     }
   };
