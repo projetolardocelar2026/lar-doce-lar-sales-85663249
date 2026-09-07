@@ -287,3 +287,48 @@ export function gerarTextoReciboPagamentoCaderneta(params: {
   L.push("Obrigada pela preferência! 💙");
   return L.join("\n");
 }
+
+// ===== Comprovante de quitação de compras específicas =====
+export function gerarTextoComprovanteQuitacao(params: {
+  clienteNome: string;
+  data: Date;
+  partes: ReciboPagamentoParte[];
+  total: number;
+  compras: CobrancaCompra[];
+  saldoAtualizado: number;
+  catalogoUrl?: string;
+}): string {
+  const { clienteNome, data, partes, total, compras, saldoAtualizado, catalogoUrl } = params;
+  const L: string[] = [];
+  L.push(`*${STORE_NAME}*`);
+  L.push(`✅ *COMPROVANTE DE QUITAÇÃO*`);
+  L.push(
+    `📅 ${data.toLocaleString("pt-BR", {
+      day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+    })}`,
+  );
+  L.push(`👤 ${clienteNome}`);
+  L.push("");
+  L.push(`Recebemos o seu pagamento de *${brl(total)}* referente às compras quitadas:`);
+  L.push("");
+  for (const c of [...compras].sort((a, b) => a.data.getTime() - b.data.getTime())) {
+    L.push(`🗓️ ${c.data.toLocaleDateString("pt-BR")} — ${brl(c.total)} ✅ QUITADA`);
+    for (const it of c.itens) {
+      L.push(`   • ${it.quantidade}x ${it.nome} — ${brl(it.preco * it.quantidade)}`);
+    }
+  }
+  L.push("");
+  const formas = partes
+    .map((p) => `${formaPagamentoLabel[p.forma] ?? p.forma}: ${brl(p.valor)}`)
+    .join(" | ");
+  L.push(`*Forma de Pagamento:* ${formas}`);
+  L.push(`*Saldo atualizado da caderneta:* ${brl(saldoAtualizado)}`);
+  if (saldoAtualizado <= 0.009) L.push("✅ Caderneta quitada!");
+  if (catalogoUrl) {
+    L.push("");
+    L.push(`🛍️ Catálogo: ${catalogoUrl}`);
+  }
+  L.push("");
+  L.push("Obrigada pela preferência! 💙");
+  return L.join("\n");
+}
