@@ -356,6 +356,16 @@ function CadernetaPage() {
         ? `Pagamento misto de ${brl(total)} registrado em ${partes.length} formas`
         : "Pagamento registrado e lançado no fluxo de caixa",
     );
+    // Baixa individual das compras selecionadas
+    const quitadas = vendasEmAberto.filter((v) => selecionadas.includes(v.id));
+    if (quitadas.length > 0) {
+      const { error: errBaixa } = await supabase
+        .from("vendas")
+        .update({ cobranca_status: "paga", status: "paga" })
+        .in("id", quitadas.map((v) => v.id));
+      if (errBaixa) toast.error("Erro ao baixar compras: " + errBaixa.message);
+    }
+
     setPagOpen(false);
     await carregarClientes();
     const { data: atualizado } = await supabase
