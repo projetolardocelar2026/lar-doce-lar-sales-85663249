@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { brl, fmtDate, fmtDateOnly, formaPagamentoLabel } from "@/lib/format";
+import { brl, fmtDate, fmtDateOnly, formaPagamentoLabel, parseBRL } from "@/lib/format";
 import { abrirWhatsApp, gerarTextoCupom, gerarTextoComprasSelecionadas, gerarTextoExtratoAberto, gerarTextoReciboPagamentoCaderneta, gerarTextoComprovanteQuitacao } from "@/lib/whatsapp";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -293,7 +293,7 @@ function CadernetaPage() {
 
   // ============ PAGAMENTO ============
   const abrirPagamento = (valorSugerido?: number) => {
-    setPagValor(valorSugerido ? valorSugerido.toFixed(2) : "");
+    setPagValor(valorSugerido ? brl(valorSugerido) : "");
     setPagForma("dinheiro");
     setPagData(todayInput());
     setPagObs("");
@@ -305,7 +305,7 @@ function CadernetaPage() {
     setPagOpen(true);
   };
 
-  const num = (s: string) => parseFloat((s || "").replace(",", ".")) || 0;
+  const num = (s: string) => parseBRL(s);
   const totalMisto = pagPartes.reduce((s, p) => s + num(p.valor), 0);
 
   const registrarPagamento = async () => {
@@ -337,28 +337,15 @@ function CadernetaPage() {
       return;
     }
 
-    const dataISO = new Date(pagData).toISOString();
-    const { error } = await supabase.from("pagamentos_caderneta").insert(
-      partes.map((p) => ({
-        cliente_id: selecionado.id,
-        valor: p.valor,
-        forma_pagamento: p.forma,
-        data_pagamento: dataISO,
-        observacoes: pagObs || null,
-        atendente_id: user?.id ?? null,
-      })),
-    );
-    if (error) {
-      toast.error("Erro ao registrar pagamento: " + error.message);
-      return;
-    }
-    toast.success(
-      partes.length > 1
-        ? `Pagamento misto de ${brl(total)} registrado em ${partes.length} formas`
-        : "Pagamento registrado e lançado no fluxo de caixa",
-    );
     // Baixa das compras: as selecionadas ou, se nenhuma, as mais antigas cobertas pelo valor pago
     let quitadas = vendasEmAberto.filter((v) => selecionadas.includes(v.id));
+    if (quitadas.length > 0) {
+      const totalCompras = quitadas.reduce((s, v) => s + Number(v.total), 0);
+      if (Math.abs(total - totalCompras) > 0.009) {
+        toast.error(`O pagamento deve ser exatamente ${brl(totalCompras)} para quitar as compras selecionadas`);
+        return;
+      }
+    }
     if (quitadas.length === 0) {
       let restante = total + 0.001;
       const ordenadas = [...vendasEmAberto].sort(
@@ -373,13 +360,30 @@ function CadernetaPage() {
       }
       quitadas = auto;
     }
-    if (quitadas.length > 0) {
-      const { error: errBaixa } = await supabase.rpc("quitar_compras_caderneta", {
-        _ids: quitadas.map((v) => v.id),
-      });
-      if (errBaixa) toast.error("Erro ao baixar compras: " + errBaixa.message);
-    }
 
+    const dataISO = new Date(pagData).toISOString();
+    const { data: baixadas, error } = await supabase.rpc("registrar_pagamento_e_quitar_caderneta", {
+      _cliente: selecionado.id,
+      _partes: partes,
+      _compras: quitadas.map((v) => v.id),
+      _data_pagamento: dataISO,
+      _observacoes: pagObs || undefined,
+    });
+    if (error) {
+      toast.error("Não foi possível concluir o pagamento: " + error.message);
+      return;
+    }
+    if (quitadas.length > 0 && Number(baixadas) !== quitadas.length) {
+      toast.error("O pagamento não foi concluído porque a compra não pôde ser marcada como paga");
+      return;
+    }
+    toast.success(
+      quitadas.length > 0
+        ? `${quitadas.length} compra(s) marcada(s) como paga(s)`
+        : partes.length > 1
+          ? `Pagamento misto de ${brl(total)} registrado em ${partes.length} formas`
+          : "Pagamento registrado e lançado no fluxo de caixa",
+    );
 
     setPagOpen(false);
     await carregarClientes();
@@ -419,21 +423,31 @@ function CadernetaPage() {
       toast.error("Cliente sem telefone cadastrado");
       return;
     }
-    const itens = (itensPorVenda[v.id] ?? []).map((i) => ({
-      nome: i.produto_nome,
-      quantidade: Number(i.quantidade),
-      preco: Number(i.preco_unitario),
-    }));
-    const texto = gerarTextoCupom({
-      vendaId: v.id,
-      data: new Date(v.data_venda),
-      clienteNome: selecionado.nome,
-      itens,
-      total: Number(v.total),
-      formaPagamento: "caderneta",
-      saldoCadernetaAtualizado: Number(selecionado.saldo_devedor),
-      catalogoUrl: catalogoUrl(),
-    });
+    const paga = v.status === "paga" || v.cobranca_status === "paga";
+    const texto = paga
+      ? gerarTextoComprovanteQuitacao({
+          clienteNome: selecionado.nome,
+          data: new Date(),
+          partes: [],
+          total: Number(v.total),
+          compras: [compraParaTexto(v)],
+          saldoAtualizado: Number(selecionado.saldo_devedor),
+          catalogoUrl: catalogoUrl(),
+        })
+      : gerarTextoCupom({
+          vendaId: v.id,
+          data: new Date(v.data_venda),
+          clienteNome: selecionado.nome,
+          itens: (itensPorVenda[v.id] ?? []).map((i) => ({
+            nome: i.produto_nome,
+            quantidade: Number(i.quantidade),
+            preco: Number(i.preco_unitario),
+          })),
+          total: Number(v.total),
+          formaPagamento: "caderneta",
+          saldoCadernetaAtualizado: Number(selecionado.saldo_devedor),
+          catalogoUrl: catalogoUrl(),
+        });
     abrirWhatsApp(selecionado.telefone, texto);
   };
 
@@ -1033,13 +1047,15 @@ function CadernetaPage() {
                 <div>
                   <Label>Valor recebido</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
                     inputMode="decimal"
                     value={pagValor}
                     onChange={(e) => setPagValor(e.target.value)}
-                    placeholder="0,00"
+                    onBlur={() => {
+                      const valor = parseBRL(pagValor);
+                      setPagValor(valor > 0 ? brl(valor) : "");
+                    }}
+                    placeholder="R$ 0,00"
                     autoFocus
                   />
                   <div className="text-xs text-muted-foreground mt-1">
@@ -1087,15 +1103,22 @@ function CadernetaPage() {
                       </SelectContent>
                     </Select>
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
                       inputMode="decimal"
-                      placeholder="0,00"
+                      placeholder="R$ 0,00"
                       value={p.valor}
                       onChange={(e) =>
                         setPagPartes((prev) =>
                           prev.map((x, i) => (i === idx ? { ...x, valor: e.target.value } : x)),
+                        )
+                      }
+                      onBlur={() =>
+                        setPagPartes((prev) =>
+                          prev.map((x, i) => {
+                            if (i !== idx) return x;
+                            const valor = parseBRL(x.valor);
+                            return { ...x, valor: valor > 0 ? brl(valor) : "" };
+                          }),
                         )
                       }
                     />
