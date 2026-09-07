@@ -958,6 +958,16 @@ export type Database = {
         }
         Returns: number
       }
+      registrar_pagamento_e_quitar_caderneta: {
+        Args: {
+          _cliente: string
+          _compras: string[]
+          _data_pagamento: string
+          _observacoes?: string
+          _partes: Json
+        }
+        Returns: number
+      }
       usar_credito_cliente: {
         Args: { _cliente: string; _valor: number }
         Returns: number
