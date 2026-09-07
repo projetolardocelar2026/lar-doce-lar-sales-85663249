@@ -809,7 +809,14 @@ function CadernetaPage() {
                             </Button>
                           </div>
                         )}
-                        {vendas.map((v) => {
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Checkbox
+                            checked={mostrarPagas}
+                            onCheckedChange={(c) => setMostrarPagas(!!c)}
+                          />
+                          Mostrar compras já pagas
+                        </label>
+                        {(mostrarPagas ? vendas : vendasEmAberto).map((v) => {
                           const atraso = diasAtraso(v.vencimento_caderneta);
                           const paga = v.status === "paga" || v.cobranca_status === "paga";
                           const statusLabel = paga ? "Paga" : atraso > 0 ? "Vencida" : "Aberta";
