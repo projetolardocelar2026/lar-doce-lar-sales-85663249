@@ -135,6 +135,7 @@ function CadernetaPage() {
 
   // Seleção manual de compras para envio no WhatsApp
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
+  const [mostrarPagas, setMostrarPagas] = useState(false);
 
   // Dialog: cupom individual
   const [cupomVenda, setCupomVenda] = useState<Venda | null>(null);
