@@ -102,6 +102,9 @@ function PDVPage() {
   const [showSplit, setShowSplit] = useState(false);
   const [splitForma, setSplitForma] = useState<Forma>("dinheiro");
   const [splitValor, setSplitValor] = useState("");
+  const [vencimentoCad, setVencimentoCad] = useState<string>(() =>
+    new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  );
   const [cupomVenda, setCupomVenda] = useState<null | {
     cliente: Cliente;
     vendaId: string;
@@ -325,7 +328,7 @@ function PDVPage() {
       }
 
       const vencCaderneta = usaCaderneta
-        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        ? (vencimentoCad || new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
         : null;
 
       const { data: venda, error: vErr } = await supabase
@@ -390,6 +393,7 @@ function PDVPage() {
           valorRecebido: troco > 0 ? valorRecebidoNum : null,
           troco: troco > 0 ? troco : null,
           saldoCadernetaAtualizado: saldoAtualizado,
+          vencimentoCaderneta: usaCaderneta ? vencCaderneta : null,
           catalogoUrl,
         });
         setCupomVenda({
@@ -874,6 +878,19 @@ function PDVPage() {
                     <div className="flex items-center gap-1 text-destructive font-medium pt-1">
                       <AlertTriangle className="h-3.5 w-3.5" />
                       Limite excedido em {brl(Number(cliente.saldo_devedor) + total - Number(cliente.limite_caderneta))}
+                    </div>
+                  )}
+                  {(forma === "caderneta" || splits.some((s) => s.forma === "caderneta")) && (
+                    <div className="border-t pt-2">
+                      <Label className="mb-1 block text-xs text-muted-foreground">
+                        Vencimento / previsão de pagamento
+                      </Label>
+                      <Input
+                        type="date"
+                        value={vencimentoCad}
+                        onChange={(e) => setVencimentoCad(e.target.value)}
+                        className="h-9"
+                      />
                     </div>
                   )}
                 </div>
