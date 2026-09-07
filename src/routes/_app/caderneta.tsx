@@ -4,7 +4,7 @@ import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { brl, fmtDate, fmtDateOnly, formaPagamentoLabel } from "@/lib/format";
-import { abrirWhatsApp, gerarTextoCupom, gerarTextoComprasSelecionadas, gerarTextoExtratoAberto, gerarTextoReciboPagamentoCaderneta } from "@/lib/whatsapp";
+import { abrirWhatsApp, gerarTextoCupom, gerarTextoComprasSelecionadas, gerarTextoExtratoAberto, gerarTextoReciboPagamentoCaderneta, gerarTextoComprovanteQuitacao } from "@/lib/whatsapp";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
