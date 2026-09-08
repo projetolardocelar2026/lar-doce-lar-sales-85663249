@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { brl, formaPagamentoLabel } from "@/lib/format";
-import { abrirWhatsApp, gerarTextoCupom } from "@/lib/whatsapp";
+import { abrirWhatsApp, preAbrirJanelaWhatsApp, gerarTextoCupom } from "@/lib/whatsapp";
 import { toast } from "sonner";
 import { Ban, Eye, Search, Receipt, Send } from "lucide-react";
 
@@ -104,6 +104,8 @@ function HistoricoVendas() {
       toast.error("Cliente sem telefone cadastrado");
       return;
     }
+    // Janela aberta no clique (gesto) para não ser bloqueada após os awaits
+    const waWin = preAbrirJanelaWhatsApp();
     const [{ data }, { data: pg }] = await Promise.all([
       supabase.from("itens_venda")
         .select("produto_nome,quantidade,preco_unitario")
@@ -129,7 +131,7 @@ function HistoricoVendas() {
       total: Number(v.total),
       formaPagamento: formaTxt,
     });
-    abrirWhatsApp(v.cliente_telefone, texto);
+    abrirWhatsApp(v.cliente_telefone, texto, waWin);
   }
 
 
