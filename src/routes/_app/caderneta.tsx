@@ -4,7 +4,7 @@ import { PageHeader } from "../_app";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { brl, fmtDate, fmtDateOnly, formaPagamentoLabel, parseBRL } from "@/lib/format";
-import { abrirWhatsApp, gerarTextoCupom, gerarTextoComprasSelecionadas, gerarTextoExtratoAberto, gerarTextoReciboPagamentoCaderneta, gerarTextoComprovanteQuitacao } from "@/lib/whatsapp";
+import { abrirWhatsApp, preAbrirJanelaWhatsApp, gerarTextoCupom, gerarTextoComprasSelecionadas, gerarTextoExtratoAberto, gerarTextoReciboPagamentoCaderneta, gerarTextoComprovanteQuitacao } from "@/lib/whatsapp";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -361,6 +361,9 @@ function CadernetaPage() {
       }
       quitadas = auto;
     }
+
+    // Abre a janela do WhatsApp no gesto do clique (antes dos awaits)
+    const waWin = selecionado.telefone ? preAbrirJanelaWhatsApp() : null;
 
     const dataISO = new Date(pagData).toISOString();
     const { data: baixadas, error } = await supabase.rpc("registrar_pagamento_e_quitar_caderneta", {
