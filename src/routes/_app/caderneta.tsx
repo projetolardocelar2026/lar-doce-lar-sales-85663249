@@ -374,10 +374,12 @@ function CadernetaPage() {
       _observacoes: pagObs || undefined,
     });
     if (error) {
+      waWin?.close();
       toast.error("Não foi possível concluir o pagamento: " + error.message);
       return;
     }
     if (quitadas.length > 0 && Number(baixadas) !== quitadas.length) {
+      waWin?.close();
       toast.error("O pagamento não foi concluído porque a compra não pôde ser marcada como paga");
       return;
     }
@@ -416,6 +418,7 @@ function CadernetaPage() {
         quitadas.length > 0
           ? gerarTextoComprovanteQuitacao({ ...comum, compras: quitadas.map(compraParaTexto) })
           : gerarTextoReciboPagamentoCaderneta(comum),
+        waWin,
       );
     }
   };
