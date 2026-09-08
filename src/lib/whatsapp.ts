@@ -64,11 +64,43 @@ export function gerarTextoCupom(v: CupomVenda): string {
   return linhas.join("\n");
 }
 
-export function abrirWhatsApp(telefone: string | null | undefined, mensagem: string) {
+/** Abre uma janela em branco NO MOMENTO DO CLIQUE (gesto do usuário),
+ *  para ser preenchida depois com abrirWhatsApp(..., janela). Evita o
+ *  bloqueio de pop-up quando há consultas ao banco antes do envio. */
+export function preAbrirJanelaWhatsApp(): Window | null {
+  try {
+    return window.open("about:blank", "_blank");
+  } catch {
+    return null;
+  }
+}
+
+export function abrirWhatsApp(
+  telefone: string | null | undefined,
+  mensagem: string,
+  janela?: Window | null,
+) {
   const tel = onlyDigits(telefone || "");
   const numero = tel ? (tel.startsWith("55") ? tel : `55${tel}`) : "";
-  const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
-  window.open(url, "_blank", "noopener,noreferrer");
+  const url = numero
+    ? `https://api.whatsapp.com/send?phone=${numero}&text=${encodeURIComponent(mensagem)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`;
+
+  // Reaproveita a janela aberta no clique (fluxo com awaits)
+  if (janela && !janela.closed) {
+    try {
+      janela.location.href = url;
+      return;
+    } catch {
+      /* cai no fallback abaixo */
+    }
+  }
+
+  const win = window.open(url, "_blank", "noopener,noreferrer");
+  if (!win) {
+    // Fallback para bloqueadores de pop-up: navega na mesma aba
+    window.location.assign(url);
+  }
 }
 
 // ===== Caderneta consolidada =====
