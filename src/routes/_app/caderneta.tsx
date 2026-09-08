@@ -77,6 +77,7 @@ type Venda = {
   status: string;
   vencimento_caderneta: string | null;
   cobranca_status: string | null;
+  quitacao_formas?: { forma: string; valor: number }[] | null;
 };
 
 type ItemVenda = {
@@ -168,7 +169,7 @@ function CadernetaPage() {
     const [{ data: v }, { data: p }] = await Promise.all([
       supabase
         .from("vendas")
-        .select("id, data_venda, total, desconto, observacoes, forma_pagamento, status, vencimento_caderneta, cobranca_status")
+        .select("id, data_venda, total, desconto, observacoes, forma_pagamento, status, vencimento_caderneta, cobranca_status, quitacao_formas")
         .eq("cliente_id", clienteId)
         .eq("forma_pagamento", "caderneta")
         .neq("status", "cancelada")
@@ -428,7 +429,10 @@ function CadernetaPage() {
       ? gerarTextoComprovanteQuitacao({
           clienteNome: selecionado.nome,
           data: new Date(),
-          partes: [],
+          partes: (Array.isArray(v.quitacao_formas) ? v.quitacao_formas : []).map((p) => ({
+            forma: String(p.forma),
+            valor: Number(p.valor),
+          })),
           total: Number(v.total),
           compras: [compraParaTexto(v)],
           saldoAtualizado: Number(selecionado.saldo_devedor),
@@ -446,6 +450,8 @@ function CadernetaPage() {
           total: Number(v.total),
           formaPagamento: "caderneta",
           saldoCadernetaAtualizado: Number(selecionado.saldo_devedor),
+          vencimentoCaderneta: v.vencimento_caderneta,
+          cobrancaPix: true,
           catalogoUrl: catalogoUrl(),
         });
     abrirWhatsApp(selecionado.telefone, texto);

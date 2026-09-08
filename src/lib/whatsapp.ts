@@ -15,6 +15,7 @@ export type CupomVenda = {
   saldoCadernetaAtualizado?: number | null;
   vencimentoCaderneta?: string | null;
   catalogoUrl?: string;
+  cobrancaPix?: boolean;
 };
 
 export function gerarTextoCupom(v: CupomVenda): string {
@@ -45,6 +46,13 @@ export function gerarTextoCupom(v: CupomVenda): string {
     linhas.push(
       `📆 *Vencimento previsto:* ${new Date(v.vencimentoCaderneta + "T12:00:00").toLocaleDateString("pt-BR")}`,
     );
+  }
+
+  if (v.cobrancaPix) {
+    linhas.push("");
+    linhas.push("💳 *Pagamento via PIX*");
+    linhas.push(`Chave: ${PIX_KEY}`);
+    linhas.push(`Titular: ${PIX_TITULAR}`);
   }
 
   if (v.catalogoUrl) {
