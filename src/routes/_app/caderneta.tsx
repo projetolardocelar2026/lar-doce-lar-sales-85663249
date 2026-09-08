@@ -450,6 +450,8 @@ function CadernetaPage() {
           total: Number(v.total),
           formaPagamento: "caderneta",
           saldoCadernetaAtualizado: Number(selecionado.saldo_devedor),
+          vencimentoCaderneta: v.vencimento_caderneta,
+          cobrancaPix: true,
           catalogoUrl: catalogoUrl(),
         });
     abrirWhatsApp(selecionado.telefone, texto);
