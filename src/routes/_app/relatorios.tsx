@@ -80,8 +80,9 @@ function Relatorios() {
 
     const [{ data: v }, { data: c }, { data: p }, { data: cats }, { data: mov }, { data: contas }, { data: pagCad }] = await Promise.all([
       supabase.from("vendas").select("id,total,forma_pagamento,data_venda,cliente_id,status")
-        .gte("data_venda", ini).lte("data_venda", fimISO).neq("status", "cancelada")
+        .gte("data_venda", ini).lte("data_venda", fimISO).eq("status", "paga")
         .order("data_venda", { ascending: false }),
+
       supabase.from("clientes").select("id,nome,saldo_devedor"),
       supabase.from("produtos").select("id,nome,estoque,estoque_minimo,ativo,categoria_id,preco"),
       supabase.from("categorias").select("id,nome").eq("ativa", true).order("ordem"),
@@ -201,10 +202,13 @@ function Relatorios() {
         map.set(p.forma_pagamento, (map.get(p.forma_pagamento) || 0) + Number(p.valor));
       });
     }
-    return Array.from(map.entries()).map(([forma, total]) => ({
+    const totalPagamento = Array.from(map.values()).reduce((s, v) => s + v, 0);
+    return Array.from(map.entries()).map(([forma, valor]) => ({
       name: formaPagamentoLabel[forma] || forma,
-      value: round2(total),
+      value: round2(valor),
+      percent: totalPagamento > 0 ? round2((valor / totalPagamento) * 100) : 0,
     }));
+
   }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos, pagCaderneta]);
 
   const totalAReceberCaderneta = useMemo(
@@ -525,13 +529,14 @@ function Relatorios() {
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={porPagamento} dataKey="value" nameKey="name" outerRadius={90} label={(e) => e.name}>
+                    <Pie data={porPagamento} dataKey="value" nameKey="name" outerRadius={90} label={(e: any) => `${e.name}: ${e.percent}%`}>
                       {porPagamento.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
-                    <Tooltip formatter={(v: number) => brl(v)} />
+                    <Tooltip formatter={(v: number, _n: string, props: any) => [brl(v), `${props?.payload?.name} (${props?.payload?.percent}%)`]} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
+
               )}
             </CardContent>
           </Card>
@@ -546,9 +551,10 @@ function Relatorios() {
                     <div className="h-3 w-3 rounded" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                     <span className="text-sm font-medium">{p.name}</span>
                   </div>
-                  <span className="font-mono font-bold">{brl(p.value)}</span>
+                  <span className="font-mono font-bold">{brl(p.value)} ({p.percent}%)</span>
                 </div>
               ))}
+
             </CardContent>
           </Card>
         </TabsContent>
