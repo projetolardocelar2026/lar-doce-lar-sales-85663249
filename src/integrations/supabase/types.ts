@@ -918,6 +918,7 @@ export type Database = {
         Args: { _motivo?: string; _novo: string; _venda: string }
         Returns: undefined
       }
+      ensure_master_admin: { Args: never; Returns: undefined }
       fechar_caixa: {
         Args: { _obs?: string; _sessao: string; _valor_contado: number }
         Returns: {
