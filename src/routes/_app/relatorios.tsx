@@ -529,13 +529,14 @@ function Relatorios() {
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={porPagamento} dataKey="value" nameKey="name" outerRadius={90} label={(e) => e.name}>
+                    <Pie data={porPagamento} dataKey="value" nameKey="name" outerRadius={90} label={(e: any) => `${e.name}: ${e.percent}%`}>
                       {porPagamento.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
-                    <Tooltip formatter={(v: number) => brl(v)} />
+                    <Tooltip formatter={(v: number, _n: string, props: any) => [brl(v), `${props?.payload?.name} (${props?.payload?.percent}%)`]} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
+
               )}
             </CardContent>
           </Card>
