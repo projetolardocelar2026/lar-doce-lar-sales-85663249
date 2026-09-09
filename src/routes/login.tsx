@@ -9,6 +9,7 @@ import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth";
+import { Eye, EyeOff } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
