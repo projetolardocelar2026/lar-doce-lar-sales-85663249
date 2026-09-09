@@ -551,9 +551,10 @@ function Relatorios() {
                     <div className="h-3 w-3 rounded" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                     <span className="text-sm font-medium">{p.name}</span>
                   </div>
-                  <span className="font-mono font-bold">{brl(p.value)}</span>
+                  <span className="font-mono font-bold">{brl(p.value)} ({p.percent}%)</span>
                 </div>
               ))}
+
             </CardContent>
           </Card>
         </TabsContent>
