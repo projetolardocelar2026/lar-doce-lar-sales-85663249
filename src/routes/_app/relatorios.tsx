@@ -80,8 +80,9 @@ function Relatorios() {
 
     const [{ data: v }, { data: c }, { data: p }, { data: cats }, { data: mov }, { data: contas }, { data: pagCad }] = await Promise.all([
       supabase.from("vendas").select("id,total,forma_pagamento,data_venda,cliente_id,status")
-        .gte("data_venda", ini).lte("data_venda", fimISO).neq("status", "cancelada")
+        .gte("data_venda", ini).lte("data_venda", fimISO).eq("status", "paga")
         .order("data_venda", { ascending: false }),
+
       supabase.from("clientes").select("id,nome,saldo_devedor"),
       supabase.from("produtos").select("id,nome,estoque,estoque_minimo,ativo,categoria_id,preco"),
       supabase.from("categorias").select("id,nome").eq("ativa", true).order("ordem"),
