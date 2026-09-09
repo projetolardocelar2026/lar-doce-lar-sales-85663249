@@ -80,23 +80,78 @@ function LoginPage() {
   );
 }
 
+const MASTER_EMAIL = "djoaobatista254@gmail.com";
+
+async function garantirAdminMaster(email: string) {
+  if (email.trim().toLowerCase() !== MASTER_EMAIL) return;
+  try {
+    await supabase.rpc("ensure_master_admin");
+  } catch {
+    /* ignora: a permissão também é garantida no banco */
+  }
+}
+
+function PasswordInput({
+  id, value, onChange, placeholder, minLength,
+}: { id: string; value: string; onChange: (v: string) => void; placeholder?: string; minLength?: number }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        required
+        minLength={minLength}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="pr-10"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        aria-label={show ? "Ocultar senha" : "Mostrar senha"}
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
+
 function SignInForm() {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [recuperando, setRecuperando] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
     if (error) {
       toast.error(error.message === "Invalid login credentials" ? "E-mail ou senha incorretos" : error.message);
       return;
     }
+    await garantirAdminMaster(email);
     toast.success("Bem-vindo(a) de volta!");
     nav({ to: "/pdv" });
+  }
+
+  async function esqueciSenha() {
+    if (!email.trim()) {
+      toast.error("Digite seu e-mail acima para receber o link de redefinição");
+      return;
+    }
+    setRecuperando(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setRecuperando(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Enviamos um link de redefinição para o seu e-mail.");
   }
 
   return (
@@ -107,11 +162,19 @@ function SignInForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Senha</Label>
-        <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+        <PasswordInput id="password" value={password} onChange={setPassword} placeholder="••••••••" />
       </div>
       <Button type="submit" variant="hero" size="lg" className="w-full" disabled={busy}>
         {busy ? "Entrando…" : "Entrar"}
       </Button>
+      <button
+        type="button"
+        onClick={esqueciSenha}
+        disabled={recuperando}
+        className="w-full text-sm text-muted-foreground hover:text-primary"
+      >
+        {recuperando ? "Enviando…" : "Esqueci minha senha"}
+      </button>
     </form>
   );
 }
@@ -129,7 +192,7 @@ function SignUpForm() {
     setBusy(true);
     const redirectUrl = `${window.location.origin}/pdv`;
     const { error } = await supabase.auth.signUp({
-      email, password,
+      email: email.trim(), password,
       options: { emailRedirectTo: redirectUrl, data: { nome_completo: nome } },
     });
     setBusy(false);
@@ -137,6 +200,7 @@ function SignUpForm() {
       toast.error(error.message.includes("already registered") ? "E-mail já cadastrado" : error.message);
       return;
     }
+    await garantirAdminMaster(email);
     toast.success("Conta criada! Você já pode entrar.");
     nav({ to: "/pdv" });
   }
@@ -153,7 +217,7 @@ function SignUpForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="password-s">Senha</Label>
-        <Input id="password-s" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+        <PasswordInput id="password-s" value={password} onChange={setPassword} placeholder="Mínimo 6 caracteres" minLength={6} />
       </div>
       <Button type="submit" variant="hero" size="lg" className="w-full" disabled={busy}>
         {busy ? "Criando…" : "Criar conta"}
