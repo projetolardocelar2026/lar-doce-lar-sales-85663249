@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as AppRouteImport } from './routes/_app'
@@ -29,6 +30,11 @@ import { Route as AppCadernetaRouteImport } from './routes/_app/caderneta'
 import { Route as AppBannersRouteImport } from './routes/_app/banners'
 import { Route as AppVendasHistoricoRouteImport } from './routes/_app/vendas.historico'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/catalogo': typeof CatalogoRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/banners': typeof AppBannersRoute
   '/caderneta': typeof AppCadernetaRoute
   '/caixa': typeof AppCaixaRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/catalogo': typeof CatalogoRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/banners': typeof AppBannersRoute
   '/caderneta': typeof AppCadernetaRoute
   '/caixa': typeof AppCaixaRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/catalogo': typeof CatalogoRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/_app/banners': typeof AppBannersRoute
   '/_app/caderneta': typeof AppCadernetaRoute
   '/_app/caixa': typeof AppCaixaRoute
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/'
     | '/catalogo'
     | '/login'
+    | '/reset-password'
     | '/banners'
     | '/caderneta'
     | '/caixa'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/'
     | '/catalogo'
     | '/login'
+    | '/reset-password'
     | '/banners'
     | '/caderneta'
     | '/caixa'
@@ -233,6 +244,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/catalogo'
     | '/login'
+    | '/reset-password'
     | '/_app/banners'
     | '/_app/caderneta'
     | '/_app/caixa'
@@ -255,10 +267,18 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   CatalogoRoute: typeof CatalogoRoute
   LoginRoute: typeof LoginRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -438,6 +458,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   CatalogoRoute: CatalogoRoute,
   LoginRoute: LoginRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
