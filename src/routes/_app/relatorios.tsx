@@ -202,10 +202,13 @@ function Relatorios() {
         map.set(p.forma_pagamento, (map.get(p.forma_pagamento) || 0) + Number(p.valor));
       });
     }
-    return Array.from(map.entries()).map(([forma, total]) => ({
+    const totalPagamento = Array.from(map.values()).reduce((s, v) => s + v, 0);
+    return Array.from(map.entries()).map(([forma, valor]) => ({
       name: formaPagamentoLabel[forma] || forma,
-      value: round2(total),
+      value: round2(valor),
+      percent: totalPagamento > 0 ? round2((valor / totalPagamento) * 100) : 0,
     }));
+
   }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos, pagCaderneta]);
 
   const totalAReceberCaderneta = useMemo(
