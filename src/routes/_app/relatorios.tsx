@@ -66,7 +66,7 @@ function Relatorios() {
   const [vendas, setVendas] = useState<Venda[]>([]);
   const [pagamentos, setPagamentos] = useState<{ venda_id: string; forma_pagamento: string; valor: number }[]>([]);
   const [itens, setItens] = useState<Item[]>([]);
-  const [pagCaderneta, setPagCaderneta] = useState<{ forma_pagamento: string; valor: number }[]>([]);
+  
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +78,7 @@ function Relatorios() {
     const ini = new Date(inicio + "T00:00:00").toISOString();
     const fimISO = new Date(fim + "T23:59:59").toISOString();
 
-    const [{ data: v }, { data: c }, { data: p }, { data: cats }, { data: mov }, { data: contas }, { data: pagCad }] = await Promise.all([
+    const [{ data: v }, { data: c }, { data: p }, { data: cats }, { data: mov }, { data: contas }] = await Promise.all([
       supabase.from("vendas").select("id,total,forma_pagamento,data_venda,cliente_id,status")
         .gte("data_venda", ini).lte("data_venda", fimISO).eq("status", "paga")
         .order("data_venda", { ascending: false }),
@@ -90,8 +90,6 @@ function Relatorios() {
         .gte("data_movimento", ini).lte("data_movimento", fimISO),
       supabase.from("contas_pagar").select("categoria,valor,status,data_pagamento")
         .eq("status", "paga").gte("data_pagamento", ini).lte("data_pagamento", fimISO),
-      supabase.from("pagamentos_caderneta").select("forma_pagamento,valor,data_pagamento")
-        .gte("data_pagamento", ini).lte("data_pagamento", fimISO),
     ]);
     const vendasArr = (v as Venda[]) || [];
     setVendas(vendasArr);
@@ -100,7 +98,6 @@ function Relatorios() {
     setCategorias((cats as Categoria[]) || []);
     setMovimentos((mov as Movimento[]) || []);
     setContasFinanceiras((contas as ContaFinanceira[]) || []);
-    setPagCaderneta(((pagCad as any[]) || []).map(x => ({ forma_pagamento: x.forma_pagamento, valor: Number(x.valor) })));
 
     if (vendasArr.length > 0) {
       const ids = vendasArr.map(x => x.id);
@@ -195,13 +192,8 @@ function Relatorios() {
         map.set(v.forma_pagamento, (map.get(v.forma_pagamento) || 0) + base);
       }
     });
-    // Recebimentos de caderneta entram pela forma REAL do pagamento
-    if (categoriaFiltro === "todas") {
-      pagCaderneta.forEach(p => {
-        if (p.forma_pagamento === "caderneta") return;
-        map.set(p.forma_pagamento, (map.get(p.forma_pagamento) || 0) + Number(p.valor));
-      });
-    }
+    // Base idêntica ao card de Faturamento: apenas vendasFiltradas (status paga).
+    // Recebimentos de caderneta NÃO entram aqui para não divergir do Faturamento.
     const totalPagamento = Array.from(map.values()).reduce((s, v) => s + v, 0);
     return Array.from(map.entries()).map(([forma, valor]) => ({
       name: formaPagamentoLabel[forma] || forma,
@@ -210,7 +202,7 @@ function Relatorios() {
     }));
 
 
-  }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos, pagCaderneta]);
+  }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos]);
 
   const totalAReceberCaderneta = useMemo(
     () => clientes.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
