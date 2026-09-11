@@ -91,7 +91,12 @@ function Relatorios() {
       supabase.from("contas_pagar").select("categoria,valor,status,data_pagamento")
         .eq("status", "paga").gte("data_pagamento", ini).lte("data_pagamento", fimISO),
     ]);
-...
+    const vendasArr = (v as Venda[]) || [];
+    setVendas(vendasArr);
+    setClientes((c as Cliente[]) || []);
+    setProdutos((p as Produto[]) || []);
+    setCategorias((cats as Categoria[]) || []);
+    setMovimentos((mov as Movimento[]) || []);
     setContasFinanceiras((contas as ContaFinanceira[]) || []);
 
     if (vendasArr.length > 0) {
