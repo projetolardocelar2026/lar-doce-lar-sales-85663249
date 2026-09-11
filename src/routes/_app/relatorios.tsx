@@ -66,7 +66,7 @@ function Relatorios() {
   const [vendas, setVendas] = useState<Venda[]>([]);
   const [pagamentos, setPagamentos] = useState<{ venda_id: string; forma_pagamento: string; valor: number }[]>([]);
   const [itens, setItens] = useState<Item[]>([]);
-  const [pagCaderneta, setPagCaderneta] = useState<{ forma_pagamento: string; valor: number }[]>([]);
+  
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +78,7 @@ function Relatorios() {
     const ini = new Date(inicio + "T00:00:00").toISOString();
     const fimISO = new Date(fim + "T23:59:59").toISOString();
 
-    const [{ data: v }, { data: c }, { data: p }, { data: cats }, { data: mov }, { data: contas }, { data: pagCad }] = await Promise.all([
+    const [{ data: v }, { data: c }, { data: p }, { data: cats }, { data: mov }, { data: contas }] = await Promise.all([
       supabase.from("vendas").select("id,total,forma_pagamento,data_venda,cliente_id,status")
         .gte("data_venda", ini).lte("data_venda", fimISO).eq("status", "paga")
         .order("data_venda", { ascending: false }),
