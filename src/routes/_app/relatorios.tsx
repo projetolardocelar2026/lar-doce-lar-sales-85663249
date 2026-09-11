@@ -195,13 +195,8 @@ function Relatorios() {
         map.set(v.forma_pagamento, (map.get(v.forma_pagamento) || 0) + base);
       }
     });
-    // Recebimentos de caderneta entram pela forma REAL do pagamento
-    if (categoriaFiltro === "todas") {
-      pagCaderneta.forEach(p => {
-        if (p.forma_pagamento === "caderneta") return;
-        map.set(p.forma_pagamento, (map.get(p.forma_pagamento) || 0) + Number(p.valor));
-      });
-    }
+    // Base idêntica ao card de Faturamento: apenas vendasFiltradas (status paga).
+    // Recebimentos de caderneta NÃO entram aqui para não divergir do Faturamento.
     const totalPagamento = Array.from(map.values()).reduce((s, v) => s + v, 0);
     return Array.from(map.entries()).map(([forma, valor]) => ({
       name: formaPagamentoLabel[forma] || forma,
