@@ -206,8 +206,9 @@ function Relatorios() {
     return Array.from(map.entries()).map(([forma, valor]) => ({
       name: formaPagamentoLabel[forma] || forma,
       value: round2(valor),
-      percent: totalPagamento > 0 ? round2((valor / totalPagamento) * 100) : 0,
+      percent: totalPagamento > 0 ? Number(((valor / totalPagamento) * 100).toFixed(1)) : 0,
     }));
+
 
   }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos, pagCaderneta]);
 
