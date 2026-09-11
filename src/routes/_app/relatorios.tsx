@@ -90,17 +90,9 @@ function Relatorios() {
         .gte("data_movimento", ini).lte("data_movimento", fimISO),
       supabase.from("contas_pagar").select("categoria,valor,status,data_pagamento")
         .eq("status", "paga").gte("data_pagamento", ini).lte("data_pagamento", fimISO),
-      supabase.from("pagamentos_caderneta").select("forma_pagamento,valor,data_pagamento")
-        .gte("data_pagamento", ini).lte("data_pagamento", fimISO),
     ]);
-    const vendasArr = (v as Venda[]) || [];
-    setVendas(vendasArr);
-    setClientes((c as Cliente[]) || []);
-    setProdutos((p as Produto[]) || []);
-    setCategorias((cats as Categoria[]) || []);
-    setMovimentos((mov as Movimento[]) || []);
+...
     setContasFinanceiras((contas as ContaFinanceira[]) || []);
-    setPagCaderneta(((pagCad as any[]) || []).map(x => ({ forma_pagamento: x.forma_pagamento, valor: Number(x.valor) })));
 
     if (vendasArr.length > 0) {
       const ids = vendasArr.map(x => x.id);
