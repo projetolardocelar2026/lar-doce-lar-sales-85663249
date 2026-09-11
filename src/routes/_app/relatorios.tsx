@@ -36,6 +36,7 @@ type Venda = {
   data_venda: string;
   cliente_id: string | null;
   status: string;
+  quitacao_formas?: any;
 };
 type Item = {
   produto_id: string | null;
