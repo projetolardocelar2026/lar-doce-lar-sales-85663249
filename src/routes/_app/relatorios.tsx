@@ -206,8 +206,9 @@ function Relatorios() {
     return Array.from(map.entries()).map(([forma, valor]) => ({
       name: formaPagamentoLabel[forma] || forma,
       value: round2(valor),
-      percent: totalPagamento > 0 ? round2((valor / totalPagamento) * 100) : 0,
+      percent: totalPagamento > 0 ? Number(((valor / totalPagamento) * 100).toFixed(1)) : 0,
     }));
+
 
   }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos, pagCaderneta]);
 
@@ -523,40 +524,40 @@ function Relatorios() {
           </Card>
           <Card>
             <CardHeader><CardTitle className="text-base">Formas de pagamento</CardTitle></CardHeader>
-            <CardContent className="h-72">
-              {porPagamento.length === 0 ? (
-                <div className="text-center text-muted-foreground py-12">Sem dados.</div>
+            <CardContent className="h-72 p-2 sm:p-4">
+              {vendasFiltradas.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-center text-muted-foreground">Nenhuma venda no período.</div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={porPagamento} dataKey="value" nameKey="name" outerRadius={90} label={(e: any) => `${e.name}: ${e.percent}%`}>
+                  <PieChart margin={{ top: 8, right: 80, bottom: 8, left: 80 }}>
+                    <Pie data={porPagamento} dataKey="value" nameKey="name" outerRadius={90} label={(e: any) => `${e.name}: ${e.percent.toFixed(1)}%`}>
                       {porPagamento.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
-                    <Tooltip formatter={(v: number, _n: string, props: any) => [brl(v), `${props?.payload?.name} (${props?.payload?.percent}%)`]} />
+                    <Tooltip formatter={(v: number, _n: string, props: any) => [brl(v), `${props?.payload?.name} (${props?.payload?.percent.toFixed(1)}%)`]} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
-
               )}
             </CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle className="text-base">Detalhamento</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              {porPagamento.length === 0 ? (
-                <div className="text-muted-foreground text-sm">Sem dados.</div>
+              {vendasFiltradas.length === 0 ? (
+                <div className="text-muted-foreground text-sm">Nenhuma venda no período.</div>
               ) : porPagamento.map((p, i) => (
                 <div key={p.name} className="flex items-center justify-between p-2 rounded-md bg-muted/40">
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                     <span className="text-sm font-medium">{p.name}</span>
                   </div>
-                  <span className="font-mono font-bold">{brl(p.value)} ({p.percent}%)</span>
+                  <span className="font-mono font-bold">{brl(p.value)} ({p.percent.toFixed(1)}%)</span>
                 </div>
               ))}
 
             </CardContent>
           </Card>
+
         </TabsContent>
 
         <TabsContent value="rankings" className="mt-4 grid md:grid-cols-2 gap-4">
