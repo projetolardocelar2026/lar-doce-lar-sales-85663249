@@ -205,7 +205,7 @@ function Relatorios() {
     }));
 
 
-  }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos, pagCaderneta]);
+  }, [vendasFiltradas, itensFiltrados, categoriaFiltro, pagamentos]);
 
   const totalAReceberCaderneta = useMemo(
     () => clientes.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
