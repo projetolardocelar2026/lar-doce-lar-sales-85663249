@@ -36,6 +36,7 @@ type Venda = {
   data_venda: string;
   cliente_id: string | null;
   status: string;
+  quitacao_formas?: any;
 };
 type Item = {
   produto_id: string | null;
@@ -79,7 +80,7 @@ function Relatorios() {
     const fimISO = new Date(fim + "T23:59:59").toISOString();
 
     const [{ data: v }, { data: c }, { data: p }, { data: cats }, { data: mov }, { data: contas }] = await Promise.all([
-      supabase.from("vendas").select("id,total,forma_pagamento,data_venda,cliente_id,status")
+      supabase.from("vendas").select("id,total,forma_pagamento,data_venda,cliente_id,status,quitacao_formas")
         .gte("data_venda", ini).lte("data_venda", fimISO).eq("status", "paga")
         .order("data_venda", { ascending: false }),
 
@@ -180,20 +181,39 @@ function Relatorios() {
     vendasFiltradas.forEach(v => {
       const base = categoriaFiltro === "todas" ? Number(v.total) : (subtotalPorVenda.get(v.id) || 0);
       if (!base) return;
-      const splits = pagamentos.filter(p => p.venda_id === v.id);
-      const somaSplits = splits.reduce((s, p) => s + Number(p.valor), 0);
-      if (splits.length > 0 && somaSplits > 0) {
-        splits.forEach(p => {
-          if (p.forma_pagamento === "caderneta") return; // fiado não é entrada de caixa
-          const parte = base * (Number(p.valor) / somaSplits);
-          map.set(p.forma_pagamento, (map.get(p.forma_pagamento) || 0) + parte);
-        });
-      } else if (v.forma_pagamento !== "caderneta") {
-        map.set(v.forma_pagamento, (map.get(v.forma_pagamento) || 0) + base);
+
+      // 1) Formas reais usadas na quitação da caderneta (quando houver)
+      let splits: { forma_pagamento: string; valor: number }[] = [];
+      const qf = v.quitacao_formas;
+      const qfArr = Array.isArray(qf) ? qf : (typeof qf === "string" ? (() => { try { return JSON.parse(qf); } catch { return []; } })() : []);
+      if (Array.isArray(qfArr) && qfArr.length > 0) {
+        splits = qfArr
+          .map((p: any) => ({ forma_pagamento: String(p.forma ?? p.forma_pagamento ?? ""), valor: Number(p.valor) || 0 }))
+          .filter(p => p.forma_pagamento && p.forma_pagamento !== "caderneta" && p.valor > 0);
       }
+      // 2) Pagamentos fracionados registrados na venda
+      if (splits.length === 0) {
+        splits = pagamentos
+          .filter(p => p.venda_id === v.id && p.forma_pagamento !== "caderneta" && Number(p.valor) > 0)
+          .map(p => ({ forma_pagamento: p.forma_pagamento, valor: Number(p.valor) }));
+      }
+      // 3) Forma única da própria venda
+      if (splits.length === 0 && v.forma_pagamento !== "caderneta") {
+        splits = [{ forma_pagamento: v.forma_pagamento, valor: base }];
+      }
+      // 4) Caderneta quitada sem forma registrada — mantém a soma igual ao faturamento
+      if (splits.length === 0) {
+        splits = [{ forma_pagamento: "nao_informado", valor: base }];
+      }
+
+      const soma = splits.reduce((s, p) => s + p.valor, 0);
+      splits.forEach(p => {
+        const parte = base * (p.valor / soma);
+        map.set(p.forma_pagamento, (map.get(p.forma_pagamento) || 0) + parte);
+      });
     });
     // Base idêntica ao card de Faturamento: apenas vendasFiltradas (status paga).
-    // Recebimentos de caderneta NÃO entram aqui para não divergir do Faturamento.
+    // Vendas na caderneta já quitadas entram pela forma real da quitação.
     const totalPagamento = Array.from(map.values()).reduce((s, v) => s + v, 0);
     return Array.from(map.entries()).map(([forma, valor]) => ({
       name: formaPagamentoLabel[forma] || forma,
