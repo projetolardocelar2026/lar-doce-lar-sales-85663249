@@ -80,7 +80,7 @@ function Relatorios() {
     const fimISO = new Date(fim + "T23:59:59").toISOString();
 
     const [{ data: v }, { data: c }, { data: p }, { data: cats }, { data: mov }, { data: contas }] = await Promise.all([
-      supabase.from("vendas").select("id,total,forma_pagamento,data_venda,cliente_id,status")
+      supabase.from("vendas").select("id,total,forma_pagamento,data_venda,cliente_id,status,quitacao_formas")
         .gte("data_venda", ini).lte("data_venda", fimISO).eq("status", "paga")
         .order("data_venda", { ascending: false }),
 
